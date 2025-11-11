@@ -1,0 +1,7 @@
+hola
+alicia
+bien
+mal
+palabra
+largo
+corto
