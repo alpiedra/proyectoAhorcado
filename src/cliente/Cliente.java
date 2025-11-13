@@ -48,37 +48,50 @@ public class Cliente {
         }
     }
     
+    private boolean esperandoNombre = false; 
+
     private void procesarMensajeServidor(Mensaje mensaje) {
         String tipo = mensaje.getTipo();
         String contenido = mensaje.getContenido();
-        
+
         if (tipo.equals(Mensaje.BIENVENIDA)) {
             System.out.println(contenido);
-            
+
         } else if (tipo.equals(Mensaje.SOLICITAR_MODO)) {
             System.out.println("\n" + contenido);
-            System.out.print("Elige una opción: ");
-            
+
+            if (contenido.toLowerCase().contains("nombre")) {
+                esperandoNombre = true;  
+                System.out.print("Tu nombre: ");
+            } else {
+                esperandoNombre = false;  
+                System.out.print("Elige una opción: ");
+            }
+
         } else if (tipo.equals(Mensaje.TU_TURNO)) {
-            System.out.println("\n⭐ " + contenido);
+            System.out.println("\n" + contenido);
             System.out.print("Introduce una letra: ");
-            
+
         } else if (tipo.equals(Mensaje.ESPERAR_TURNO)) {
             System.out.println(contenido);
-            
+
         } else if (tipo.equals(Mensaje.ESTADO_JUEGO)) {
-            System.out.println("\n" + contenido);
-            
+            System.out.println(contenido);
+
         } else if (tipo.equals(Mensaje.RESULTADO_INTENTO)) {
             System.out.println(contenido);
-            
+
         } else if (tipo.equals(Mensaje.PARTIDA_TERMINADA)) {
             System.out.println("\n" + contenido);
-            
+            System.out.println("\nEscribe 'salir' para terminar.");
+
         } else if (tipo.equals(Mensaje.ERROR)) {
             System.err.println("Error: " + contenido);
         }
+
+        System.out.flush();
     }
+
     
     private void enviarMensajes(ObjectOutputStream salida, Scanner scanner) {
         try {
@@ -88,22 +101,27 @@ public class Cliente {
                 if (input.isEmpty()) {
                     continue;
                 }
-                if (input.equals("1")) {
-                    enviarMensaje(salida, Mensaje.ELEGIR_MODO, "TURNOS");
-                    
-                } else if (input.equals("2")) {
-                    enviarMensaje(salida, Mensaje.ELEGIR_MODO, "CONCURRENTE");
-                    
-                } else if (input.length() == 1 && Character.isLetter(input.charAt(0))) {
-                    enviarMensaje(salida, Mensaje.INTENTAR_LETRA, input.toUpperCase());
-                    
-                } else if (input.equalsIgnoreCase("salir")) {
+                if (input.equalsIgnoreCase("salir")) {
                     enviarMensaje(salida, Mensaje.DESCONECTAR, "");
                     break;
-                    
+
+                } else if (esperandoNombre) {
+                    enviarMensaje(salida, Mensaje.ENVIAR_NOMBRE, input);
+                    esperandoNombre = false;
+
+                } else if (input.equals("1")) {
+                    enviarMensaje(salida, Mensaje.ELEGIR_MODO, "TURNOS");
+
+                } else if (input.equals("2")) {
+                    enviarMensaje(salida, Mensaje.ELEGIR_MODO, "CONCURRENTE");
+
+                } else if (input.length() == 1 && Character.isLetter(input.charAt(0))) {
+                    enviarMensaje(salida, Mensaje.INTENTAR_LETRA, input.toUpperCase());
+
                 } else {
                     System.out.println("Comando no reconocido. Escribe 'salir' para terminar.");
                 }
+
             }
         } catch (Exception e) {
             System.err.println("Error al enviar: " + e.getMessage());

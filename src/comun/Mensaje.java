@@ -17,6 +17,8 @@ public class Mensaje implements Serializable {
     public static String RESULTADO_INTENTO = "RESULTADO INTENTO";
     public static String PARTIDA_TERMINADA = "PARTIDA TERMINADA";
     public static String ERROR = "ERROR";
+    public static String ENVIAR_NOMBRE = "ENVIAR NOMBRE";
+
     
     private String tipo;
     private String contenido;
