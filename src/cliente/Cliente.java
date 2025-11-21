@@ -7,10 +7,14 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Scanner;
-
+//Utilizo dos hilos en el cliente
+//1. Escuchar mensajes del servidor
+//2. Leer al usuario, usamos el hilo principal para esto
 public class Cliente {
     private String HOST = "localhost";
     private int PUERTO = 5000;
+    private boolean esperandoNombre = false; 
+    //Comenzamos conexión con el servidor, lanzamos primer hilo
     
     public void conectar() {
         try (
@@ -19,15 +23,19 @@ public class Cliente {
             ObjectInputStream entrada = new ObjectInputStream(socket.getInputStream());
             Scanner scanner = new Scanner(System.in)
         ) {
-        	Thread hiloReceptor = new Thread(new Runnable() {
+        	//Creamos y lanzamos hilo para escuchar los mensajes
+        	Thread hilo = new Thread(new Runnable() {
         	    @Override
         	    public void run() {
         	        recibirMensajes(entrada);
         	    }
         	});
-        	hiloReceptor.start();
+        	hilo.start();
+        	
+        	//Hilo principal lee del teclado y envia
             enviarMensajes(salida, scanner);
-            hiloReceptor.join();
+            
+            hilo.join();//Bloqueo hasta que termine
             
         } catch (IOException e) {
             e.printStackTrace();
@@ -36,7 +44,7 @@ public class Cliente {
 			e.printStackTrace();
 		} 
     }
-    
+    //Mensajes del servidor
     private void recibirMensajes(ObjectInputStream entrada) {
         try {
             while (true) {
@@ -48,8 +56,7 @@ public class Cliente {
         }
     }
     
-    private boolean esperandoNombre = false; 
-
+    //Maneja el mensaje del servidor según el tipo que sea
     private void procesarMensajeServidor(Mensaje mensaje) {
         String tipo = mensaje.getTipo();
         String contenido = mensaje.getContenido();
@@ -89,15 +96,13 @@ public class Cliente {
             System.err.println("Error: " + contenido);
         }
 
-        System.out.flush();
+        System.out.flush();//Forzamos que se muestre el mensaje
     }
-
-    
+//Lee del teclado y se envía mensaje al servidor
     private void enviarMensajes(ObjectOutputStream salida, Scanner scanner) {
         try {
             while (true) {
-                String input = scanner.nextLine().trim();
-                
+                String input = scanner.nextLine();          
                 if (input.isEmpty()) {
                     continue;
                 }
@@ -110,10 +115,10 @@ public class Cliente {
                     esperandoNombre = false;
 
                 } else if (input.equals("1")) {
-                    enviarMensaje(salida, Mensaje.ELEGIR_MODO, "TURNOS");
+                    enviarMensaje(salida, Mensaje.ELEGIR_MODO, "turnos");
 
                 } else if (input.equals("2")) {
-                    enviarMensaje(salida, Mensaje.ELEGIR_MODO, "CONCURRENTE");
+                    enviarMensaje(salida, Mensaje.ELEGIR_MODO, "concurrente");
 
                 } else if (input.length() == 1 && Character.isLetter(input.charAt(0))) {
                     enviarMensaje(salida, Mensaje.INTENTAR_LETRA, input.toUpperCase());
@@ -124,10 +129,9 @@ public class Cliente {
 
             }
         } catch (Exception e) {
-            System.err.println("Error al enviar: " + e.getMessage());
-        }
+           e.printStackTrace();        }
     }
-    
+   // Crea un objeto y lo envia al servidor
     private void enviarMensaje(ObjectOutputStream salida, String tipo, String contenido) {
         try {
             Mensaje mensaje = new Mensaje(tipo, contenido);
@@ -137,7 +141,7 @@ public class Cliente {
             System.err.println("Error al enviar mensaje: " + e.getMessage());
         }
     }
-    
+    //Crea cliente y lo conecta al servidor
     public static void main(String[] args) {
         Cliente cliente = new Cliente();
         cliente.conectar();
