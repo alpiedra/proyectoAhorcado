@@ -8,9 +8,11 @@ import java.util.List;
 
 public class Servidor {
     private int puerto = 5000;
-    private List<ManejadorCliente> clientes;
+    private List<ManejadorCliente> clientes; //Todos los clientes que están conectados
+   //Partida y jugadores modo turnos
     private Juego juegoTurnos;
     private List<ManejadorCliente> jugadoresTurnos;
+   
     private int turnoActual;
     
     public Servidor() {
@@ -23,6 +25,7 @@ public class Servidor {
         Servidor servidor = new Servidor();
         servidor.iniciar();
     }
+    //Ctreo serverSocket y empieza a aceptar clienets
     public void iniciar() {
        try (ServerSocket serverSocket = new ServerSocket(puerto)) {
             while (true) {
@@ -30,6 +33,7 @@ public class Servidor {
                    Socket socketCliente = serverSocket.accept();
                    ManejadorCliente manejador = new ManejadorCliente(socketCliente, this);
                    clientes.add(manejador);
+                   //creo e inicio hilo nuevo para cada cliente
                    Thread hilo = new Thread(manejador);
                    hilo.start();
                }catch(IOException e) {
@@ -40,6 +44,9 @@ public class Servidor {
         	e.printStackTrace();
         }
     }   
+    //Devuelve el juego compartido o lo inicia
+    //Synchronized ya que si varios hilos llaman a este método a la vez se pueden crear
+    //muchas instancias del juego y solo queremos una que la compartan
     public synchronized Juego getJuegoTurnos() {
         if (juegoTurnos == null) {
             juegoTurnos = new Juego();
@@ -47,6 +54,9 @@ public class Servidor {
         }
         return juegoTurnos;
     }
+    //Añade un cliente y les avisa a los demás
+    //Asigna el primer turno, si es el primero, o dice que espere
+    //synchronized para evitar que accedan varios hilos y que causen errores
     public synchronized void unirseModoTurnos(ManejadorCliente cliente) {
     	jugadoresTurnos.add(cliente);
     	String mensaje = "\n Jugadores conectados: " + jugadoresTurnos.size() + "\n";
@@ -55,6 +65,10 @@ public class Servidor {
         }
         notificarEstadoATodos(mensaje);
         
+        Juego juego = getJuegoTurnos();
+        String estadoInicial = cliente.construirEstadoJuego(juego);
+        notificarEstadoATodos(estadoInicial);
+        
         if (jugadoresTurnos.size() == 1) {
             turnoActual = 0;
             cliente.notificarTurno(true);
@@ -62,6 +76,9 @@ public class Servidor {
             cliente.notificarTurno(false);
         }
     }
+    
+    //Pasa el turno al siguiente jugador
+    //synchronized para evitar que dos hilos cambien el turno a la vez y se produzcan errores
     public synchronized void siguienteTurno() {
         if (jugadoresTurnos.isEmpty()) {
             return;
@@ -73,17 +90,19 @@ public class Servidor {
        
         String mensajeTurno = "Turno de: " + nombreActual + "\n";
         notificarEstadoATodos(mensajeTurno);
-        
+        //Dice a cada jugador si es su turno o no
         for (int i = 0; i < jugadoresTurnos.size(); i++) {
             ManejadorCliente jugador = jugadoresTurnos.get(i);
             jugador.notificarTurno(i == turnoActual);
         }
     }
+    //synchronized para evitar que la lista cambie mientras otro hilo la recorre
     public synchronized void notificarEstadoATodos(String mensaje) {
         for (ManejadorCliente jugador : jugadoresTurnos) {
             jugador.enviarEstado(mensaje);
         }
     }
+    //synchronized evita que la lista de jugadores cambie mientras se comprueba si es el turno del cliente
     public synchronized boolean esTuTurno(ManejadorCliente cliente) {
         if (jugadoresTurnos.isEmpty()) {
             return false;
@@ -91,21 +110,26 @@ public class Servidor {
         int indice = jugadoresTurnos.indexOf(cliente);
         return indice == turnoActual;
     }
+    //Se usa cuando un cliente se desconecta
+    //synchronized para que los clientes y turnos no se modifiquen a la vez
     public synchronized void eliminarCliente(ManejadorCliente cliente) {
         clientes.remove(cliente);
         if (jugadoresTurnos.contains(cliente)) {
             int indice = jugadoresTurnos.indexOf(cliente);
             jugadoresTurnos.remove(cliente);
+            //Si era su turno y hay mas jugadores
             if (indice == turnoActual && !jugadoresTurnos.isEmpty()) {
                 turnoActual = turnoActual % jugadoresTurnos.size();
                 siguienteTurno();
             }
         }
     }
+    //Nueva partida cuando alguien gana o pierde
+    //synchronized evita que otros hilos cambien algo, como la lista de jugadores mientras se reinicia
     public synchronized void reiniciarJuego() {
         juegoTurnos = new Juego();
         turnoActual = 0;
-        String mensaje = "\nNueva partida!\n";
+        String mensaje = "\nNueva partida\n";
         notificarEstadoATodos(mensaje);
         
        if (!jugadoresTurnos.isEmpty()) {
