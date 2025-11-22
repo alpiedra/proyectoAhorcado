@@ -17,7 +17,7 @@ public class Juego {
 	private char[] palabraActual;
 	private Set<Character> letrasUsadas;
 	private int intentosRestantes;  
-	private int maxIntentos = 10;
+	private static final int maxIntentos = 10;
 	
 	public Juego() {
 		this.palabraSecreta= cargarPalabra();
