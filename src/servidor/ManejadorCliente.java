@@ -57,57 +57,64 @@ public class ManejadorCliente implements Runnable {
     //Recibe mensaje del cliente y hace la acción que corresponde
     private void procesarMensaje(Mensaje mensaje) {
         String tipo = mensaje.getTipo();
-        if (tipo.equals(Mensaje.ELEGIR_MODO)) {
+       if (tipo.equals(Mensaje.ELEGIR_MODO)) {
             modoJuego = mensaje.getContenido();
             if ("turnos".equals(modoJuego)) {
+                // Modo TURNOS
                 servidor.unirseModoTurnos(this);
-                Juego juego = servidor.getJuegoTurnos();//Juego compartido
+                Juego juego = servidor.getJuegoTurnos(); // Juego compartido
                 String estadoInicial = construirEstadoJuego(juego);
                 servidor.notificarEstadoATodos(nombreJugador + " se ha unido al modo por turnos.\n" +
                         estadoInicial);
-             } else if ("concurrente".equals(modoJuego)) {
-                enviarMensaje(Mensaje.TU_TURNO, "¡Empieza a jugar, "+nombreJugador + "!");
+            } else if ("concurrente".equals(modoJuego)) {
+                // Modo CONCURRENTE
+                servidor.unirseModoConcurrente(this);
             }
-          } else if (tipo.equals(Mensaje.INTENTAR_LETRA)) {
-            if (!"TURNOS".equals(modoJuego)) {
-                return;
-            }
-            if (!servidor.esTuTurno(this)) {
-                enviarMensaje(Mensaje.ERROR, "No es tu turno");
-                return;
-            }
-            String letraStr = mensaje.getContenido();
-            if (letraStr.isEmpty()) {
-                enviarMensaje(Mensaje.ERROR, "Debes introducir una letra");
-                return;
-            }
-            //Tenemos la letra y obtenemos el juego compartido para usarla
-            char letra = letraStr.charAt(0);
-            Juego juego = servidor.getJuegoTurnos();
-            Juego.ResultadoIntento resultado = juego.intentarLetra(letra);
-            //Mensaje del resultado
-            String mensajeResultado = construirMensajeResultado(resultado, juego);
-            servidor.notificarEstadoATodos("\nTurno de: " + nombreJugador + "\n" + mensajeResultado);
-            if (resultado.ganado || resultado.perdido) {
-            	String mensajeFinal = resultado.ganado
+            
+       } else if (tipo.equals(Mensaje.INTENTAR_LETRA)) {
+             if ("turnos".equals(modoJuego)) {
+                // Verificar que sea su turno
+                if (!servidor.esTuTurno(this)) {
+                    enviarMensaje(Mensaje.ERROR, "No es tu turno");
+                    return;
+                } // Validar letra
+                String letraStr = mensaje.getContenido();
+                if (letraStr.isEmpty()) {
+                    enviarMensaje(Mensaje.ERROR, "Debes introducir una letra");
+                    return;
+                }// Tenemos la letra y obtenemos el juego compartido para usarla
+                char letra = letraStr.charAt(0);
+                Juego juego = servidor.getJuegoTurnos();
+                Juego.ResultadoIntento resultado = juego.intentarLetra(letra);
+                // Mensaje del resultado
+                String mensajeResultado = construirMensajeResultado(resultado, juego);
+                servidor.notificarEstadoATodos("\nTurno de: " + nombreJugador + "\n" + mensajeResultado);
+                 // Verificar si terminó la partida
+                if (resultado.ganado || resultado.perdido) {
+                    String mensajeFinal = resultado.ganado
                         ? "¡" + nombreJugador + " ha ganado! La palabra era: " + juego.getPalabraSecreta()
                         : "Se acabaron los intentos. La palabra era: " + juego.getPalabraSecreta();
-            	servidor.notificarEstadoATodos(mensajeFinal);    
-            //Reinicia después de tres hilos, se usa otro hilo para no bloquear
-            new Thread(() -> {
-                    try {
-                        Thread.sleep(3000);
-                        servidor.reiniciarJuego();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }).start();
-          } else {
-        	  //si no termina pasa al siguiente turno
-              servidor.siguienteTurno();
-          }
-      }
-}
+                    servidor.notificarEstadoATodos(mensajeFinal);    
+                     // Crear hilo temporal que espera 3 segundos y luego reinicia el juego
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(3000);
+                            servidor.reiniciarJuego();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }).start();
+                    
+                } else {
+                    // Si no termina, pasa al siguiente turno
+                    servidor.siguienteTurno();
+                }
+                
+            } else if ("concurrente".equals(modoJuego)) {
+                procesarLetraConcurrente(mensaje);
+            }
+        }
+    }
     //Envio el objeto mensaje al cliente
     //Synchronized evita que varios hilos envien a la vez mensajes al mismo cliente
    public synchronized void enviarMensaje(String tipo, String contenido) {
@@ -162,4 +169,58 @@ public class ManejadorCliente implements Runnable {
            e.printStackTrace();
         }
     }
+     private void procesarLetraConcurrente(Mensaje mensaje) {
+    	    //validamos letra
+    	    String letraStr = mensaje.getContenido();
+    	    if (letraStr.isEmpty()) {
+    	        enviarMensaje(Mensaje.ERROR, "Debes introducir una letra");
+    	        return;
+    	    }
+    	    
+    	    char letra = letraStr.charAt(0);
+    	    JuegoConcurrente juego = servidor.getJuegoConcurrente();
+    	    
+    	    //Intentar letra
+    	    // Método es synchronized, así que solo uno entra a la vez
+    	    JuegoConcurrente.ResultadoConcurrente resultado = 
+    	        juego.intentarLetra(nombreJugador, letra);
+    	    
+    	    String mensajeResultado = nombreJugador + " intentó: " + letra + "\n" +
+    	                             resultado.mensaje + "\n" +
+    	                             servidor.construirEstadoConcurrente(juego);
+    	    
+    	    servidor.notificarConcurrentesATodos(mensajeResultado);
+    	    if (resultado.ganador) {
+    	        String anuncio = nombreJugador + " ha ganado!\n" +
+    	                       "   Puso la última letra: " + letra + "\n" +
+    	                       "   Palabra completa: " + juego.getPalabraSecreta() + "\n";
+    	        servidor.notificarConcurrentesATodos(anuncio);
+    	     // Crear hilo temporal que espera 5 segundos y luego reinicia el juego
+    	        new Thread(() -> {
+    	            try {
+    	                Thread.sleep(5000);
+    	                servidor.reiniciarJuegoConcurrente();
+    	            } catch (InterruptedException e) {
+    	                e.printStackTrace();
+    	            }
+    	        }).start();
+    	    }
+    	    
+    	    else if (resultado.perdido) {
+    	        String anuncio = "Se acabaron los intentos.\n" +
+    	                       "Palabra: " + juego.getPalabraSecreta() + "\n" +
+    	                       "Nadie ganó esta ronda.\n";
+    	        servidor.notificarConcurrentesATodos(anuncio);
+    	        
+    	     // Crear hilo temporal que espera 5 segundos y luego reinicia el juego
+    	        new Thread(() -> {
+    	            try {
+    	                Thread.sleep(5000);
+    	                servidor.reiniciarJuegoConcurrente();
+    	            } catch (InterruptedException e) {
+    	                e.printStackTrace();
+    	            }
+    	        }).start();
+    	    }
+    	}
 }

@@ -6,21 +6,76 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
+import comun.Mensaje;
+
 public class Servidor {
     private int puerto = 5000;
     private List<ManejadorCliente> clientes; //Todos los clientes que están conectados
    //Partida y jugadores modo turnos
     private Juego juegoTurnos;
     private List<ManejadorCliente> jugadoresTurnos;
-   
     private int turnoActual;
+   //Partida y jugadores modo concurrente
+    private JuegoConcurrente juegoConcurrente;
+    private List<ManejadorCliente> jugadoresConcurrentes;
     
     public Servidor() {
         this.clientes = new ArrayList<>(); 
         this.juegoTurnos = null;
         this.jugadoresTurnos = new ArrayList<>();
         this.turnoActual = 0;
+        this.juegoConcurrente = null;
+        this.jugadoresConcurrentes = new ArrayList<>();
     }
+    public synchronized JuegoConcurrente getJuegoConcurrente() {
+        if (juegoConcurrente == null) {
+            juegoConcurrente = new JuegoConcurrente();
+        }
+        return juegoConcurrente;
+    }
+    public synchronized void unirseModoConcurrente(ManejadorCliente cliente) {
+        jugadoresConcurrentes.add(cliente);
+        //Obtener el juego compartido
+        JuegoConcurrente juego = getJuegoConcurrente();
+        String mensaje = "Modo concurrente\n";
+        cliente.enviarEstado(mensaje);
+        String jugadoresActivos = "Jugadores jugando: " + jugadoresConcurrentes.size() + "\n";
+        for (ManejadorCliente j : jugadoresConcurrentes) {
+            jugadoresActivos += "   - " + j.getNombreJugador() + "\n";
+        }
+        notificarConcurrentesATodos(jugadoresActivos);
+        
+        // Mostrar estado actual del juego
+        String estadoInicial = construirEstadoConcurrente(juego);
+        cliente.enviarEstado(estadoInicial);
+        
+        cliente.enviarMensaje(Mensaje.TU_TURNO, "Empieza");
+    }
+    public synchronized void notificarConcurrentesATodos(String mensaje) {
+        for (ManejadorCliente jugador : jugadoresConcurrentes) {
+            jugador.enviarEstado(mensaje);
+        }
+    }
+    public String construirEstadoConcurrente(JuegoConcurrente juego) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("  Palabra: ").append(juego.getPalabraActual()).append("\n");
+        sb.append("  Intentos restantes: ").append(juego.getIntentosRestantes()).append("\n");
+        sb.append("  Letras usadas: ").append(juego.getLetrasUsadas()).append("\n");
+        return sb.toString();
+    }
+    public synchronized void reiniciarJuegoConcurrente() {
+        juegoConcurrente = new JuegoConcurrente();
+        
+        String mensaje = "Nueva partida\n";
+        notificarConcurrentesATodos(mensaje);
+        String estadoInicial = construirEstadoConcurrente(juegoConcurrente);
+        notificarConcurrentesATodos(estadoInicial);
+        
+        for (ManejadorCliente cliente : jugadoresConcurrentes) {
+            cliente.enviarMensaje(Mensaje.TU_TURNO, "Empieza!");
+        }
+    }
+    
     public static void main(String[] args) {
         Servidor servidor = new Servidor();
         servidor.iniciar();
@@ -122,6 +177,12 @@ public class Servidor {
                 turnoActual = turnoActual % jugadoresTurnos.size();
                 siguienteTurno();
             }
+        }
+        if (jugadoresConcurrentes.contains(cliente)) {
+            jugadoresConcurrentes.remove(cliente);
+            String mensaje = cliente.getNombreJugador() + " se ha desconectado.\n" +
+                           "Jugadores activos: " + jugadoresConcurrentes.size() + "\n";
+            notificarConcurrentesATodos(mensaje);
         }
     }
     //Nueva partida cuando alguien gana o pierde

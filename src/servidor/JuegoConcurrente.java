@@ -49,6 +49,7 @@ public class JuegoConcurrente {
 		 boolean acierto=false;
 		 for (int i = 0; i < palabraSecreta.length(); i++) {
 	            if (palabraSecreta.charAt(i) == letra) {
+	            	palabraActual[i] = letra;
 	                acierto = true;
 	            }
 	      }
