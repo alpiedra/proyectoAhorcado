@@ -1,9 +1,10 @@
 package comun;
 
 import java.io.Serializable;
-//Uso la clase mensaje para representar las conversaciones entre el cliente y el servidor
-//Tiene una parte tipo donde indico el asunto y el contenido que es el mensaje
-public class Mensaje implements Serializable {// implemento serializable para poder trabajar con ellos como objetos
+//Clase usada para representar los mensajes intercambiados entre cliente y servidor
+//Cada mensaje tiene un tipo, que es como la acción a realizar, y un contenido, que es el mensaje que se envía
+//Implementa Serializable para poder tratarlo como objetos
+public class Mensaje implements Serializable {
     private static final long serialVersionUID = 1L;
    //Mensajes que envía el cliente al servidor:
     public static String CONECTAR="coonectar";
@@ -22,7 +23,6 @@ public class Mensaje implements Serializable {// implemento serializable para po
     public static String PARTIDA_TERMINADA="partida_terminada";
     public static String ERROR="error";
   
-    
     private String tipo;
     private String contenido;
 

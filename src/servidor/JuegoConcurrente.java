@@ -11,7 +11,7 @@ import java.util.Set;
 
 //Todos los jugadores comparten misma palabra, intentos y letras usadas
 //Gana quien pone la última letra
-//Synchronized en todos los métodos ya que todos los hilos acceden a la vez
+//Synchronized en todos los métodos ya que todos los hilos acceden a la vez, evitar condiciones de carrera
 public class JuegoConcurrente {
 	private String palabraSecreta;
 	private char[] palabraActual;
@@ -22,7 +22,7 @@ public class JuegoConcurrente {
 	private boolean partidaTerminada;
 	
 	public JuegoConcurrente() {
-		this.palabraSecreta = cargarPalabraAleatoria();
+		this.palabraSecreta = Juego.cargarPalabraAleatoria();
         this.palabraActual = new char[palabraSecreta.length()];
         
         for (int i = 0; i < palabraActual.length; i++) {
@@ -33,7 +33,9 @@ public class JuegoConcurrente {
         this.ganador = null;
         this.partidaTerminada = false;
 	}
-	
+    // 
+	//Intento de letra hecho por un jugador
+    // Está sincronizado porque varios hilos llaman a este método a la vez
 	public synchronized ResultadoConcurrente intentarLetra(String nombreJugador, char letra) {
 		letra=  Character.toUpperCase(letra);
 		if(partidaTerminada) {
@@ -42,13 +44,13 @@ public class JuegoConcurrente {
 		}
 		 if (letrasUsadas.contains(letra)) {
 	            return new ResultadoConcurrente(
-	                false, "Esa letra ya fue usada",false, false,false, nombreJugador
+	                false, "Ya se utilizo esa letra \n",false, false,false, nombreJugador
 	            );
 	     }
 		 letrasUsadas.add(letra);
 		 boolean acierto=false;
 		 for (int i = 0; i < palabraSecreta.length(); i++) {
-	            if (palabraSecreta.charAt(i) == letra) {
+	            if (palabraSecreta.toUpperCase().charAt(i) == letra) {
 	            	palabraActual[i] = letra;
 	                acierto = true;
 	            }
@@ -80,6 +82,9 @@ public class JuegoConcurrente {
 	        }
 	        return true;
 	   }
+    
+
+    // Getters sincronizados porque consultan estado compartido
     public synchronized String getPalabraActual() {
         StringBuilder sb = new StringBuilder();
         for (char c : palabraActual) {
@@ -102,24 +107,12 @@ public class JuegoConcurrente {
     public synchronized String getGanador() {
         return ganador;
     }
-    
     public synchronized boolean haTerminado() {
         return partidaTerminada;
     }
-	
-	private String cargarPalabraAleatoria() {
-        List<String> palabras = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader("palabras.txt"))) {
-            String linea;
-            while ((linea = br.readLine()) != null) {
-                palabras.add(linea.toUpperCase());
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        Random random = new Random();
-        return palabras.get(random.nextInt(palabras.size()));
-    }
+    
+
+    // Clase usada para devolver resultado de un intento
 	public static class ResultadoConcurrente {
         public boolean acierto;           
         public String mensaje;           

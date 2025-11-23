@@ -49,7 +49,7 @@ public class Servidor {
         String estadoInicial = construirEstadoConcurrente(juego);
         cliente.enviarEstado(estadoInicial);
         
-        cliente.enviarMensaje(Mensaje.TU_TURNO, "Empieza");
+        cliente.enviarMensaje(Mensaje.TU_TURNO, "Empieza!");
     }
     public synchronized void notificarConcurrentesATodos(String mensaje) {
         for (ManejadorCliente jugador : jugadoresConcurrentes) {
@@ -190,7 +190,7 @@ public class Servidor {
     public synchronized void reiniciarJuego() {
         juegoTurnos = new Juego();
         turnoActual = 0;
-        String mensaje = "\nNueva partida\n";
+        String mensaje = "Nueva partida\n";
         notificarEstadoATodos(mensaje);
         
        if (!jugadoresTurnos.isEmpty()) {

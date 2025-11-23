@@ -9,7 +9,7 @@ import java.net.Socket;
 import java.util.Scanner;
 //Utilizo dos hilos en el cliente
 //1. Escuchar mensajes del servidor
-//2. Leer al usuario, usamos el hilo principal para esto
+//2. Leer al usuario y envia al servidor, usamos el hilo principal para esto
 public class Cliente {
     private String HOST = "localhost";
     private int PUERTO = 5000;
@@ -100,36 +100,44 @@ public class Cliente {
     }
 //Lee del teclado y se envía mensaje al servidor
     private void enviarMensajes(ObjectOutputStream salida, Scanner scanner) {
-        try {
-            while (true) {
-                String input = scanner.nextLine();          
-                if (input.isEmpty()) {
-                    continue;
-                }
-                if (input.equalsIgnoreCase("salir")) {
-                    enviarMensaje(salida, Mensaje.DESCONECTAR, "");
-                    break;
-
-                } else if (esperandoNombre) {
-                    enviarMensaje(salida, Mensaje.ENVIAR_NOMBRE, input);
-                    esperandoNombre = false;
-
-                } else if (input.equals("1")) {
-                    enviarMensaje(salida, Mensaje.ELEGIR_MODO, "turnos");
-
-                } else if (input.equals("2")) {
-                    enviarMensaje(salida, Mensaje.ELEGIR_MODO, "concurrente");
-
-                } else if (input.length() == 1 && Character.isLetter(input.charAt(0))) {
-                    enviarMensaje(salida, Mensaje.INTENTAR_LETRA, input.toUpperCase());
-
-                } else {
-                    System.out.println("Comando no reconocido. Escribe 'salir' para terminar.");
-                }
-
-            }
-        } catch (Exception e) {
-           e.printStackTrace();        }
+    	 try { 
+    		 boolean modoElegido = false;
+    		 while (true) {
+             String input = scanner.nextLine().trim();
+             if (input.isEmpty()) {
+                 continue;
+             }
+             if (esperandoNombre) {
+                 enviarMensaje(salida, Mensaje.ENVIAR_NOMBRE, input);
+                 esperandoNombre = false;
+             }
+             if (!modoElegido) {
+                 // Validar que sea 1, 2 o salir
+                 if (input.equals("1")) {
+                     enviarMensaje(salida, Mensaje.ELEGIR_MODO, "turnos");
+                     modoElegido = true; 
+                     
+                 } else if (input.equals("2")) {
+                     enviarMensaje(salida, Mensaje.ELEGIR_MODO, "concurrente");
+                     modoElegido = true;  
+                     
+                 } else if (input.equals("salir")) {
+                     System.out.println("Salir");
+                     enviarMensaje(salida, Mensaje.DESCONECTAR, "");
+                     break;  
+                     
+                 }
+             }
+             // Comando: SALIR
+             if (input.equalsIgnoreCase("salir")) {
+                 enviarMensaje(salida, Mensaje.DESCONECTAR, "");
+                 break;
+             } else if (input.length() == 1 && Character.isLetter(input.charAt(0))) {
+                 enviarMensaje(salida, Mensaje.INTENTAR_LETRA, input.toUpperCase());
+             
+         }}}catch (Exception e) {
+    	       e.printStackTrace();
+    	    }
     }
    // Crea un objeto y lo envia al servidor
     private void enviarMensaje(ObjectOutputStream salida, String tipo, String contenido) {
@@ -138,7 +146,7 @@ public class Cliente {
             salida.writeObject(mensaje);
             salida.flush();
         } catch (IOException e) {
-            System.err.println("Error al enviar mensaje: " + e.getMessage());
+           e.printStackTrace();
         }
     }
     //Crea cliente y lo conecta al servidor
