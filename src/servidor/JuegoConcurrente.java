@@ -21,7 +21,7 @@ public class JuegoConcurrente {
 	private String ganador;
 	private boolean partidaTerminada;
 	
-	public JuegoConcurrente() {
+	public JuegoConcurrente() throws IOException {
 		this.palabraSecreta = Juego.cargarPalabraAleatoria();
         this.palabraActual = new char[palabraSecreta.length()];
         

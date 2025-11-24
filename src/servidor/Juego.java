@@ -19,18 +19,17 @@ import java.util.Set;
 //Gestiona: palabra secreta, letras acertadas, letras usadas,
 //intentos restantes y estado general
 public class Juego {
-	//Guardamos palabbras para no hacer tantas llamadas a la API
-	private static List<String> palabras = new ArrayList<>();
+	
+	private static List<String> palabras = new ArrayList<>();//Guardamos palabbras para no hacer tantas llamadas a la API
 	private static final int tamaño_palabras = 50;
-	   
 	private String palabraSecreta;
 	private char[] palabraActual;
 	private Set<Character> letrasUsadas;
 	private int intentosRestantes;  
 	private static final int maxIntentos = 10;
 	
-	public Juego() {
-		this.palabraSecreta= cargarPalabra();
+	public Juego() throws IOException {
+		this.palabraSecreta= cargarPalabraAleatoria();
 		this.palabraActual = new char[palabraSecreta.length()];
 		for(int i=0; i<palabraActual.length; i++) {
 			palabraActual[i]='_';
@@ -41,7 +40,7 @@ public class Juego {
 	
 	//Métodos estaticos para la carga de palabras:
 	
-	public static String cargarPalabraAleatoria() {
+	public static String cargarPalabraAleatoria() throws IOException{
         //Utilizar palabras de la lista si hay palabras
         if (!palabras.isEmpty()) {
             Random random = new Random();
@@ -49,7 +48,8 @@ public class Juego {
             String palabra = palabras.remove(n);
             return palabra;
         }
-        // Intentamos API (rellena el cache con 50 palabras)
+        
+        // Intentamos API, rellena el cache con 50 palabras
         try {
             cargarPalabrasAPI();
             if (!palabras.isEmpty()) {
@@ -57,7 +57,8 @@ public class Juego {
                 return palabra;
             }
         } catch (Exception e) {
-           e.printStackTrace();	        }
+           e.printStackTrace();	        
+        }
         
         //Intentar archivo palabras.txt
         try {
@@ -133,7 +134,7 @@ public class Juego {
     
     //Lógica del juego:
     
-    // Método sincronizado para que varios hilos no modifiquen a la vez el estado
+    // Método Synchronized para que varios hilos no modifiquen a la vez el estado
     // Intento de una letra y devuelve un objeto ResultadoIntento con datos del turno
     public synchronized ResultadoIntento intentarLetra(char letra) {
         letra = Character.toUpperCase(letra);

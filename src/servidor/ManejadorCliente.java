@@ -16,6 +16,7 @@ public class ManejadorCliente implements Runnable {
     private ObjectOutputStream salida;
     private ObjectInputStream entrada;
     private String nombreJugador;
+    private volatile boolean cerrado = false;
     
    public ManejadorCliente(Socket socket, Servidor servidor) {
         this.socket = socket;
@@ -43,9 +44,20 @@ public class ManejadorCliente implements Runnable {
                    "   1️ Por turnos\n" +
                    "   2️ Concurrente\n" +
                    "Escribe 1 o 2");
-           while (true) {
-                Mensaje mensaje = (Mensaje) entrada.readObject();
-                procesarMensaje(mensaje);
+           while (!cerrado) {
+        	   try {
+        	        Mensaje mensaje = (Mensaje) entrada.readObject();
+        	        
+        	        if (mensaje.getTipo().equals(Mensaje.DESCONECTAR)) {
+        	            break;
+        	        }
+        	        
+        	        procesarMensaje(mensaje);
+        	        
+        	    } catch (EOFException e) {
+        	        e.printStackTrace();
+        	        break;
+        	    }
             }
         } catch (IOException | ClassNotFoundException e) {
            e.printStackTrace();
@@ -54,62 +66,78 @@ public class ManejadorCliente implements Runnable {
         }
     }
     //Recibe mensaje del cliente y hace la acción que corresponde
-    private void procesarMensaje(Mensaje mensaje) {
+    private void procesarMensaje(Mensaje mensaje) throws IOException {
         String tipo = mensaje.getTipo();
-       if (tipo.equals(Mensaje.ELEGIR_MODO)) {
-            modoJuego = mensaje.getContenido();
+        if (tipo.equals(Mensaje.ELEGIR_MODO)) {
+        	modoJuego = mensaje.getContenido();
+
             if ("turnos".equals(modoJuego)) {
-                // Modo TURNOS
                 servidor.unirseModoTurnos(this);
-                Juego juego = servidor.getJuegoTurnos(); // Juego compartido
-                String estadoInicial = construirEstadoJuego(juego);
+
             } else if ("concurrente".equals(modoJuego)) {
-                // Modo CONCURRENTE
                 servidor.unirseModoConcurrente(this);
-            }   
-       } else if (tipo.equals(Mensaje.INTENTAR_LETRA)) {
-             if ("turnos".equals(modoJuego)) {
-                // Verificar que sea su turno
+            }
+            return;
+        }
+        if (tipo.equals(Mensaje.RESPUESTA_CONTINUAR)) {
+            String respuesta = mensaje.getContenido();
+
+            if ("turnos".equals(modoJuego)) {
+                servidor.procesarRespuestaContinuarTurnos(this, respuesta);
+            } else if ("concurrente".equals(modoJuego)) {
+                servidor.procesarRespuestaContinuarConcurrente(this, respuesta);
+            }
+            return;
+        }
+        if (tipo.equals(Mensaje.INTENTAR_LETRA)) {
+
+            if ("turnos".equals(modoJuego)) {
+
                 if (!servidor.esTuTurno(this)) {
                     enviarMensaje(Mensaje.ERROR, "No es tu turno");
                     return;
-                } // Validar letra
+                }
+
                 String letraStr = mensaje.getContenido();
                 if (letraStr.isEmpty()) {
                     enviarMensaje(Mensaje.ERROR, "Debes introducir una letra");
                     return;
-                }// Tenemos la letra y obtenemos el juego compartido para usarla
+                }
+
                 char letra = letraStr.charAt(0);
                 Juego juego = servidor.getJuegoTurnos();
                 Juego.ResultadoIntento resultado = juego.intentarLetra(letra);
-                // Mensaje del resultado
-                String mensajeResultado = construirMensajeResultado(resultado, juego);
-                servidor.notificarEstadoATodos("\nTurno de: " + nombreJugador + "\n" + mensajeResultado);
-                 // Verificar si terminó la partida
-                if (resultado.ganado || resultado.perdido) {
-                    String mensajeFinal = resultado.ganado
-                        ? "¡" + nombreJugador + " ha ganado! La palabra era: " + juego.getPalabraSecreta()
-                        : "Se acabaron los intentos. La palabra era: " + juego.getPalabraSecreta();
-                    servidor.notificarEstadoATodos(mensajeFinal);    
-                    servidor.reiniciarJuego();
 
-                    
+                servidor.notificarEstadoATodos(
+                        "\nTurno de: " + nombreJugador + "\n" +
+                        construirMensajeResultado(resultado, juego)
+                );
+
+                if (resultado.ganado || resultado.perdido) {
+
+                    servidor.notificarEstadoATodos(
+                            resultado.ganado
+                                    ? "¡" + nombreJugador + " ha ganado! La palabra era: " + juego.getPalabraSecreta()
+                                    : "Se acabaron los intentos. La palabra era: " + juego.getPalabraSecreta()
+                    );
+
+                    servidor.preguntarContinuarTurnos();
                 } else {
-                    // Si no termina, pasa al siguiente turno
                     servidor.siguienteTurno();
                 }
-                
+
             } else if ("concurrente".equals(modoJuego)) {
                 procesarLetraConcurrente(mensaje);
             }
         }
     }
+
     //Envio el objeto mensaje al cliente
     //Synchronized evita que varios hilos envien a la vez mensajes al mismo cliente
    public synchronized void enviarMensaje(String tipo, String contenido) {
        try {
     	   //Serializa y envia el mensaje, con flush() forzamos el envio
-           if (salida != null) {
+           if (salida != null && !cerrado) {
                Mensaje mensaje = new Mensaje(tipo, contenido);
                salida.writeObject(mensaje);
                salida.flush();
@@ -139,7 +167,7 @@ public class ManejadorCliente implements Runnable {
        sb.append(construirEstadoJuego(juego));
        return sb.toString();
    }
-   private void procesarLetraConcurrente(Mensaje mensaje) {
+   private void procesarLetraConcurrente(Mensaje mensaje) throws IOException {
 	    //validamos letra
 	    String letraStr = mensaje.getContenido();
 	    if (letraStr.isEmpty()) {
@@ -149,6 +177,7 @@ public class ManejadorCliente implements Runnable {
 	    
 	    char letra = letraStr.charAt(0);
 	    JuegoConcurrente juego = servidor.getJuegoConcurrente();
+	    
 	    
 	    //Intentar letra
 	    // Método es synchronized, así que solo uno entra a la vez
@@ -160,12 +189,14 @@ public class ManejadorCliente implements Runnable {
 	                             servidor.construirEstadoConcurrente(juego);
 	    
 	    servidor.notificarConcurrentesATodos(mensajeResultado);
+	    
+	    
 	    if (resultado.ganador) {
 	        String anuncio = nombreJugador + " ha ganado!\n" +
 	                       "   Puso la última letra: " + letra + "\n" +
 	                       "   Palabra completa: " + juego.getPalabraSecreta() + "\n";
 	        servidor.notificarConcurrentesATodos(anuncio);
-	        servidor.reiniciarJuegoConcurrente();
+	        servidor.preguntarContinuarConcurrente();
 
 	    }
 	    
@@ -174,7 +205,7 @@ public class ManejadorCliente implements Runnable {
 	                       "Palabra: " + juego.getPalabraSecreta() + "\n" +
 	                       "Nadie ganó esta ronda.\n";
 	        servidor.notificarConcurrentesATodos(anuncio);
-	        servidor.reiniciarJuegoConcurrente();
+	        servidor.preguntarContinuarConcurrente();
 
 	}
 }
@@ -185,16 +216,17 @@ public class ManejadorCliente implements Runnable {
 	    return nombreJugador != null ? nombreJugador : "Jugador";
    }
    //Cierra recursos cuando el cliente se desconecta
-     private void cerrarConexion() {
-        try {
-        	if (entrada != null) { entrada.close();}
-            if (salida != null) { salida.close();}
-            if (socket != null && !socket.isClosed()) {
-                socket.close();
-            }
-            servidor.eliminarCliente(this);
-        } catch (IOException e) {
-           e.printStackTrace();
-        }
-    }
+   private void cerrarConexion() {
+	    if (cerrado) return;
+	    cerrado = true;
+	    
+	    try { if (entrada != null) entrada.close(); } catch (Exception e) {}
+	    try { if (salida != null) salida.close(); } catch (Exception e) {}
+	    try { if (socket != null && !socket.isClosed()) socket.close(); } catch (Exception e) {}
+	    
+	    servidor.eliminarCliente(this);
+	}
+   public void cerrarConexionPublica() {
+	    cerrarConexion();
+	}
     }
