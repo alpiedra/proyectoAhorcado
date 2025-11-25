@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DTD simple que registra cada partida del ahorcado-->
+<!ELEMENT historialPartidas (partida*)>
+
+<!ELEMENT partida (fecha, modo, jugadores, palabra, resultado)>
+<!ATTLIST partida id ID #REQUIRED>
+
+<!ELEMENT fecha (#PCDATA)>
+<!ELEMENT modo (#PCDATA)>
+<!ELEMENT jugadores (#PCDATA)>
+<!ELEMENT palabra (#PCDATA)>
+<!ELEMENT resultado (#PCDATA)>
+<!ATTLIST resultado
+    tipo (victoria|derrota) #REQUIRED
+    ganador CDATA #IMPLIED
+>

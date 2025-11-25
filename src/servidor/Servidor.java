@@ -182,6 +182,28 @@ public class Servidor {
 		} else {
 			cliente.enviarMensaje(Mensaje.PREGUNTAR_CONTINUAR, "\nSigues en la partida.\n");
 		}
+		// Guardar resultado de la partida que acaba de terminar
+	    if (juegoTurnos != null && juegoTurnos.haTerminado()) {
+	        // Construir lista de jugadores
+	        StringBuilder jugadores = new StringBuilder();
+	        for (int i = 0; i < jugadoresTurnos.size(); i++) {
+	            jugadores.append(jugadoresTurnos.get(i).getNombreJugador());
+	            if (i < jugadoresTurnos.size() - 1) {
+	                jugadores.append(", ");
+	            }
+	        }
+	       //Saber si fue victoria o derrota
+	        boolean victoria = juegoTurnos.getIntentosRestantes() > 0;
+	        
+	        //Guardar en el XML
+	        GuardarPartida.guardarResultado(
+	            "turnos",
+	            jugadores.toString(),
+	            juegoTurnos.getPalabraSecreta(),
+	            victoria,
+	            victoria ? "Jugador" : null  // Si no sabes quién ganó, pon "Jugador"
+	        );
+	    }
 
 		// Reinicia la partida si quedan jugadores
 		if (!jugadoresTurnos.isEmpty() && jugadoresTurnos.size() > 0) {
@@ -263,6 +285,27 @@ public class Servidor {
 		} else {
 			cliente.enviarMensaje(Mensaje.PREGUNTAR_CONTINUAR, "\nSigues en la partida.\n");
 		}
+		// Guardar resultado de la partida
+	    if (juegoConcurrente != null && juegoConcurrente.haTerminado()) {
+	        // Construir lista de jugadores
+	        StringBuilder jugadores = new StringBuilder();
+	        for (int i = 0; i < jugadoresConcurrentes.size(); i++) {
+	            jugadores.append(jugadoresConcurrentes.get(i).getNombreJugador());
+	            if (i < jugadoresConcurrentes.size() - 1) {
+	                jugadores.append(", ");
+	            }
+	        }
+	        String ganador = juegoConcurrente.getGanador();
+	        boolean victoria = ganador != null;
+	        //Guardar en el XML
+	        GuardarPartida.guardarResultado(
+	            "concurrente",
+	            jugadores.toString(),
+	            juegoConcurrente.getPalabraSecreta(),
+	            victoria,
+	            ganador
+	        );
+	    }
 
 		// Reinicia la partida si quedan jugadores
 		if (!jugadoresConcurrentes.isEmpty() && jugadoresConcurrentes.size() > 0) {
