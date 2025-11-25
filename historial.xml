@@ -1,2 +1,3 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?><historialPartidas>
-<partida id="P1"><fecha>2025-11-25 09:26:01</fecha><modo>concurrente</modo><jugadores>alicia</jugadores><palabra>CONVENIENCIA</palabra><resultado tipo="derrota">Se acabaron los intentos, nadie ganó</resultado></partida><partida id="P2"><fecha>2025-11-25 09:26:30</fecha><modo>concurrente</modo><jugadores/><palabra>LUNAR</palabra><resultado ganador="alicia" tipo="victoria">alicia ganó la partida</resultado></partida></historialPartidas>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<historialPartidas>
+</historialPartidas>
