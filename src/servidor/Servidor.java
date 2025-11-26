@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -17,10 +19,17 @@ public class Servidor {
 	private Juego juegoTurnos;
 	private List<ManejadorCliente> jugadoresTurnos;
 	private int turnoActual;
+	private Map<ManejadorCliente, Boolean> respuestasContinuarTurnos;
+	private int jugadoresQueRespondieron;
+	
 	// Partida y jugadores modo concurrente
 	private JuegoConcurrente juegoConcurrente;
 	private List<ManejadorCliente> jugadoresConcurrentes;
+	private Map<ManejadorCliente, Boolean> respuestasContinuarConcurrente;
+	private int jugadoresQueRespondieroConc;
+	private int totalJugadoresConcurrentesRonda;
 
+	
 	private ExecutorService pool = Executors.newCachedThreadPool();
 
 	public Servidor() {
@@ -30,6 +39,10 @@ public class Servidor {
 		this.turnoActual = 0;
 		this.juegoConcurrente = null;
 		this.jugadoresConcurrentes = new ArrayList<>();
+		this.respuestasContinuarTurnos = new HashMap<>();
+		this.jugadoresQueRespondieron = 0;
+		this.respuestasContinuarConcurrente = new HashMap<>();
+		this.jugadoresQueRespondieroConc = 0;
 	}
 
 	public static void main(String[] args) {
@@ -80,9 +93,24 @@ public class Servidor {
 
 		if (jugadoresTurnos.size() == 1) {
 			turnoActual = 0;
-			cliente.notificarTurno(true);
+			notificarTurnosATodos();
 		} else {
 			cliente.notificarTurno(false);
+		}
+	}
+
+	// Método para notificar turnos a todos correctamente
+	private void notificarTurnosATodos() {
+		if (jugadoresTurnos.isEmpty()) {
+			return;
+		}
+		ManejadorCliente jugadorActual = jugadoresTurnos.get(turnoActual);
+		String nombreActual = jugadorActual.getNombreJugador();
+		String mensajeTurno = "-Turno de: " + nombreActual + "\n";
+		notificarEstadoATodos(mensajeTurno);
+		for (int i = 0; i < jugadoresTurnos.size(); i++) {
+			ManejadorCliente jugador = jugadoresTurnos.get(i);
+			jugador.notificarTurno(i == turnoActual);
 		}
 	}
 
@@ -94,17 +122,7 @@ public class Servidor {
 			return;
 		}
 		turnoActual = (turnoActual + 1) % jugadoresTurnos.size();
-
-		ManejadorCliente jugadorActual = jugadoresTurnos.get(turnoActual);
-		String nombreActual = jugadorActual.getNombreJugador();
-
-		String mensajeTurno = "Turno de: " + nombreActual + "\n";
-		notificarEstadoATodos(mensajeTurno);
-		// Dice a cada jugador si es su turno o no
-		for (int i = 0; i < jugadoresTurnos.size(); i++) {
-			ManejadorCliente jugador = jugadoresTurnos.get(i);
-			jugador.notificarTurno(i == turnoActual);
-		}
+		notificarTurnosATodos();
 	}
 
 	// synchronized para evitar que la lista cambie mientras otro hilo la recorre
@@ -131,14 +149,28 @@ public class Servidor {
 		if (jugadoresTurnos.contains(cliente)) {
 			int indice = jugadoresTurnos.indexOf(cliente);
 			jugadoresTurnos.remove(cliente);
-			// Si era su turno y hay mas jugadores
-			if (indice == turnoActual && !jugadoresTurnos.isEmpty()) {
+			respuestasContinuarTurnos.remove(cliente);
+
+			String mensaje = cliente.getNombreJugador() + " se ha desconectado.\n" + "Jugadores activos: "
+					+ jugadoresTurnos.size() + "\n";
+			notificarEstadoATodos(mensaje);
+
+			// Ajustar turno si es necesario
+			if (!jugadoresTurnos.isEmpty()) {
+				if (indice <= turnoActual) {
+					turnoActual = Math.max(0, turnoActual - 1);
+				}
 				turnoActual = turnoActual % jugadoresTurnos.size();
-				siguienteTurno();
+				notificarTurnosATodos();
+			} else {
+				// Si no quedan jugadores, reiniciar el juego
+				juegoTurnos = null;
+				turnoActual = 0;
 			}
 		}
 		if (jugadoresConcurrentes.contains(cliente)) {
 			jugadoresConcurrentes.remove(cliente);
+			respuestasContinuarConcurrente.remove(cliente);
 			String mensaje = cliente.getNombreJugador() + " se ha desconectado.\n" + "Jugadores activos: "
 					+ jugadoresConcurrentes.size() + "\n";
 			notificarConcurrentesATodos(mensaje);
@@ -151,6 +183,9 @@ public class Servidor {
 	public synchronized void reiniciarJuego() throws IOException {
 		juegoTurnos = new Juego();
 		turnoActual = 0;
+		respuestasContinuarTurnos.clear();
+		jugadoresQueRespondieron = 0;
+
 		String mensaje = "Nueva partida\n";
 		notificarEstadoATodos(mensaje);
 
@@ -158,12 +193,14 @@ public class Servidor {
 			ManejadorCliente primerJugador = jugadoresTurnos.get(0);
 			String estadoInicial = primerJugador.construirEstadoJuego(juegoTurnos);
 			notificarEstadoATodos(estadoInicial);
-			siguienteTurno();
+			notificarTurnosATodos();
 		}
 	}
 
 	// Se muestra elo mensaje al finalizar una partida
 	public synchronized void preguntarContinuarTurnos() {
+		respuestasContinuarTurnos.clear();
+		jugadoresQueRespondieron = 0;
 		String pregunta = "¿Jugar otra ronda?\n" + "   'si' para continuar\n" + "   'no' para salir\n";
 
 		for (ManejadorCliente jugador : jugadoresTurnos) {
@@ -174,40 +211,55 @@ public class Servidor {
 	public synchronized void procesarRespuestaContinuarTurnos(ManejadorCliente cliente, String respuesta)
 			throws IOException {
 
-		if ("no".equalsIgnoreCase(respuesta)) {
-			notificarEstadoATodos("El jugador " + cliente.getNombreJugador() + " ha salido de la partida.\n");
-			cliente.enviarMensaje(Mensaje.ESTADO_JUEGO, "Has salido de la partida. Adiós!\n");
-			jugadoresTurnos.remove(cliente);
-			cliente.desconectar();
-		} else {
-			cliente.enviarMensaje(Mensaje.PREGUNTAR_CONTINUAR, "Sigues en la partida.\n");
-		}
-		// Guardar resultado de la partida que acaba de terminar
-	    if (juegoTurnos != null && juegoTurnos.haTerminado()) {
-	        // Construir lista de jugadores
-	        StringBuilder jugadores = new StringBuilder();
-	        for (int i = 0; i < jugadoresTurnos.size(); i++) {
-	            jugadores.append(jugadoresTurnos.get(i).getNombreJugador());
-	            if (i < jugadoresTurnos.size() - 1) {
-	                jugadores.append(", ");
-	            }
-	        }
-	       //Saber si fue victoria o derrota
-	        boolean victoria = juegoTurnos.getIntentosRestantes() > 0;
-	        
-	        //Guardar en el XML
-	        GuardarPartida.guardarResultado(
-	            "turnos",
-	            jugadores.toString(),
-	            juegoTurnos.getPalabraSecreta(),
-	            victoria,
-	            victoria ? "Jugador" : null  // Si no sabes quién ganó, pon "Jugador"
-	        );
-	    }
+		// Registrar la respuesta del jugador
+		boolean quiereContinuar = "si".equalsIgnoreCase(respuesta);
+		respuestasContinuarTurnos.put(cliente, quiereContinuar);
+		jugadoresQueRespondieron++;
 
-		// Reinicia la partida si quedan jugadores
-		if (!jugadoresTurnos.isEmpty() && jugadoresTurnos.size() > 0) {
-			reiniciarJuego();
+		if (!quiereContinuar) {
+			cliente.enviarMensaje(Mensaje.ESTADO_JUEGO, "Has salido de la partida. ¡Hasta pronto!\n");
+
+		} else {
+			cliente.enviarMensaje(Mensaje.ESTADO_JUEGO, "Esperando a los demás jugadores...\n");
+		}
+
+		// Esperar a que todos respondan
+		if (jugadoresQueRespondieron >= jugadoresTurnos.size()) {
+			// Guardar resultado de la partida antes de procesar
+			if (juegoTurnos != null && juegoTurnos.haTerminado()) {
+				StringBuilder jugadores = new StringBuilder();
+				for (int i = 0; i < jugadoresTurnos.size(); i++) {
+					jugadores.append(jugadoresTurnos.get(i).getNombreJugador());
+					if (i < jugadoresTurnos.size() - 1) {
+						jugadores.append(", ");
+					}
+				}
+				boolean victoria = juegoTurnos.getIntentosRestantes() > 0;
+				GuardarPartida.guardarResultado("turnos", jugadores.toString(), juegoTurnos.getPalabraSecreta(),
+						victoria, victoria ? "Jugador" : null);
+			}
+
+			// Eliminar jugadores que dijeron "no"
+			List<ManejadorCliente> aEliminar = new ArrayList<>();
+			for (Map.Entry<ManejadorCliente, Boolean> entry : respuestasContinuarTurnos.entrySet()) {
+				if (!entry.getValue()) {
+					aEliminar.add(entry.getKey());
+				}
+			}
+
+			for (ManejadorCliente c : aEliminar) {
+				jugadoresTurnos.remove(c);
+				c.desconectar();
+			}
+
+			// Reiniciar si quedan jugadores
+			if (!jugadoresTurnos.isEmpty()) {
+				String mensaje = "\n¡Todos han respondido! Iniciando nueva partida...\n";
+				notificarEstadoATodos(mensaje);
+				reiniciarJuego();
+			} else {
+				System.out.println("No quedan jugadores en modo turnos");
+			}
 		}
 	}
 
@@ -252,6 +304,8 @@ public class Servidor {
 
 	public synchronized void reiniciarJuegoConcurrente() throws IOException {
 		juegoConcurrente = new JuegoConcurrente();
+		respuestasContinuarConcurrente.clear();
+		jugadoresQueRespondieroConc = 0;
 
 		String mensaje = "Nueva partida!\n Escribe 'salir' si quieres abandonar la partida \n";
 		notificarConcurrentesATodos(mensaje);
@@ -265,51 +319,69 @@ public class Servidor {
 
 	// se hace la pregunta cuando se acaba una partida
 	public synchronized void preguntarContinuarConcurrente() {
+		totalJugadoresConcurrentesRonda = jugadoresConcurrentes.size();
+	    respuestasContinuarConcurrente.clear();
+	    jugadoresQueRespondieroConc = 0;
 		String pregunta = "¿Jugar otra ronda?\n" + "   'si' para continuar\n" + "   'no' para salir\n";
 
 		for (ManejadorCliente jugador : jugadoresConcurrentes) {
 			jugador.enviarMensaje(Mensaje.PREGUNTAR_CONTINUAR, pregunta);
 		}
 	}
+	
 
 	public synchronized void procesarRespuestaContinuarConcurrente(ManejadorCliente cliente, String respuesta)
 			throws IOException {
 
-		if ("no".equalsIgnoreCase(respuesta)) {
+		// Registrar respuesta
+		boolean quiereContinuar = "si".equalsIgnoreCase(respuesta);
+		respuestasContinuarConcurrente.put(cliente, quiereContinuar);
+		jugadoresQueRespondieroConc++;
 
-			notificarConcurrentesATodos("El jugador " + cliente.getNombreJugador() + " ha salido de la partida.\n");
-			cliente.enviarMensaje(Mensaje.ESTADO_JUEGO, "Has salido de la partida. Adiós!\n");
-			jugadoresConcurrentes.remove(cliente);
-			cliente.desconectar();
-
+		if (!quiereContinuar) {
+			cliente.enviarMensaje(Mensaje.ESTADO_JUEGO, "Has salido de la partida. ¡Hasta pronto!\n");
 		} else {
-			cliente.enviarMensaje(Mensaje.PREGUNTAR_CONTINUAR, "\nSigues en la partida.\n");
+			cliente.enviarMensaje(Mensaje.ESTADO_JUEGO, "Esperando a los demás jugadores...\n");
 		}
-		// Guardar resultado de la partida
-	    if (juegoConcurrente != null && juegoConcurrente.haTerminado()) {
-	        // Construir lista de jugadores
-	        StringBuilder jugadores = new StringBuilder();
-	        for (int i = 0; i < jugadoresConcurrentes.size(); i++) {
-	            jugadores.append(jugadoresConcurrentes.get(i).getNombreJugador());
-	            if (i < jugadoresConcurrentes.size() - 1) {
-	                jugadores.append(", ");
-	            }
-	        }
-	        String ganador = juegoConcurrente.getGanador();
-	        boolean victoria = ganador != null;
-	        //Guardar en el XML
-	        GuardarPartida.guardarResultado(
-	            "concurrente",
-	            jugadores.toString(),
-	            juegoConcurrente.getPalabraSecreta(),
-	            victoria,
-	            ganador
-	        );
-	    }
 
-		// Reinicia la partida si quedan jugadores
-		if (!jugadoresConcurrentes.isEmpty() && jugadoresConcurrentes.size() > 0) {
-			reiniciarJuegoConcurrente();
+		// Esperar a que todos respondan
+		if (jugadoresQueRespondieroConc >= totalJugadoresConcurrentesRonda) {
+			// Guardar resultado
+			if (juegoConcurrente != null && juegoConcurrente.haTerminado()) {
+				StringBuilder jugadores = new StringBuilder();
+				for (int i = 0; i < jugadoresConcurrentes.size(); i++) {
+					jugadores.append(jugadoresConcurrentes.get(i).getNombreJugador());
+					if (i < jugadoresConcurrentes.size() - 1) {
+						jugadores.append(", ");
+					}
+				}
+				String ganador = juegoConcurrente.getGanador();
+				boolean victoria = ganador != null;
+				GuardarPartida.guardarResultado("concurrente", jugadores.toString(),
+						juegoConcurrente.getPalabraSecreta(), victoria, ganador);
+			}
+
+			// Eliminar jugadores que dijeron "no"
+			List<ManejadorCliente> aEliminar = new ArrayList<>();
+			for (Map.Entry<ManejadorCliente, Boolean> entry : respuestasContinuarConcurrente.entrySet()) {
+				if (!entry.getValue()) {
+					aEliminar.add(entry.getKey());
+				}
+			}
+
+			for (ManejadorCliente c : aEliminar) {
+				jugadoresConcurrentes.remove(c);
+				c.desconectar();
+			}
+
+			// Reiniciar si quedan jugadores
+			if (!jugadoresConcurrentes.isEmpty()) {
+				String mensaje = "\n¡Todos han respondido! Iniciando nueva partida...\n";
+				notificarConcurrentesATodos(mensaje);
+				reiniciarJuegoConcurrente();
+			} else {
+				System.out.println("No quedan jugadores en modo concurrente");
+			}
 		}
 	}
 }

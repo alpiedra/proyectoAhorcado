@@ -66,22 +66,26 @@ public class Cliente {
 			break;
 
 		case Mensaje.SOLICITAR_MODO:
-			System.out.println("\n" + contenido);
+			System.out.println( contenido+"\n");
 			if (contenido.toLowerCase().contains("nombre")) {
 				esperandoNombre = true;
+				esperandoContinuar = false;
 				System.out.print("Tu nombre: \n");
 			} else {
 				esperandoNombre = false;
+				esperandoContinuar = false;
 				System.out.print("Elige una opción: \n");
 			}
 			break;
 
 		case Mensaje.TU_TURNO:
+			esperandoContinuar = false;
 			System.out.println(contenido+"\n");
 			System.out.print("Introduce una letra: \n");
 			break;
 
 		case Mensaje.ESPERAR_TURNO:
+			esperandoContinuar = false;
 			System.out.println(contenido);
 			break;
 

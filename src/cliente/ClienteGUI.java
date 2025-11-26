@@ -162,6 +162,7 @@ public class ClienteGUI extends JFrame {
                     System.out.println("Resultado de intento");
                     if (panelJuego != null) {
                         panelJuego.mostrarMensaje(contenido);
+                        
                     }
                     break;
                     
