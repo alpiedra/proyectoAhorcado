@@ -162,51 +162,59 @@ public class PanelJuego extends JPanel {
 
 	private void enviarLetra() {
 		if (comboLetras.getItemCount() == 0) {
-			JOptionPane.showMessageDialog(this, "No quedan letras disponibles", "Aviso", JOptionPane.WARNING_MESSAGE);
-			return;
+	        JOptionPane.showMessageDialog(this, 
+	            "No quedan letras disponibles", 
+	            "Aviso", 
+	            JOptionPane.WARNING_MESSAGE);
+	        return;
 		}
-
 		String letra = (String) comboLetras.getSelectedItem();
-		if (letra != null) {
-			ventanaPrincipal.enviarMensaje(Mensaje.INTENTAR_LETRA, letra);
-
-			// Eliminar letra del ComboBox
-			comboLetras.removeItem(letra);
-		}
+	    ventanaPrincipal.enviarMensaje(Mensaje.INTENTAR_LETRA, letra);
+	}
+	public void eliminarLetraDelCombo(String letra) {
+	    comboLetras.removeItem(letra);
 	}
 
 	// Para actualizar
 	public void actualizarEstado(String estado) {
-		String[] lineas = estado.split("\n");
-
-		for (String linea : lineas) {
-			linea = linea.trim();
-
-			if (linea.contains("Palabra:")) {
-				int indice = linea.indexOf("Palabra:");
-				String palabra = linea.substring(indice + 8).trim();
-				lblPalabra.setText("Palabra: " + palabra);
-
-			} else if (linea.contains("Intentos restantes:")) {
-				int indice = linea.indexOf("Intentos restantes:");
-				String intentosStr = linea.substring(indice + 19).trim();
-				lblIntentos.setText("Intentos restantes: " + intentosStr);
-
-				// Actualizar dibujo del ahorcado
-				try {
-					int numIntentos = Integer.parseInt(intentosStr);
-					int errores = 10 - numIntentos;
-					panelAhorcado.setErrores(errores);
-				} catch (NumberFormatException e) {
-					e.printStackTrace();
-				}
-
-			} else if (linea.contains("Letras usadas:")) {
-				int indice = linea.indexOf("Letras usadas:");
-				String letras = linea.substring(indice + 14).trim();
-				areaLetrasUsadas.setText(letras);
-			}
-		}
+	    // El estado viene con formato:
+	    // "Palabra: _ A _ A\nIntentos restantes: 8\nLetras usadas: [A, E]"
+	     String[] lineas = estado.split("\n");
+	    
+	    for (String linea : lineas) {
+	        linea = linea.trim(); //Eliminar espacios al inicio/final
+	        if (linea.contains("Palabra:")) {
+	            // Extraer solo la parte después de "Palabra:"
+	            int indice = linea.indexOf(":");
+	            if (indice != -1 && indice + 1 < linea.length()) {
+	                String palabra = linea.substring(indice + 1).trim();
+	                lblPalabra.setText("Palabra: " + palabra);
+	            }
+	            
+	        } else if (linea.contains("Intentos restantes:")) {
+	            int indice = linea.indexOf(":");
+	            if (indice != -1 && indice + 1 < linea.length()) {
+	                String intentos = linea.substring(indice + 1).trim();
+	                lblIntentos.setText("Intentos restantes: " + intentos);
+	                
+	                // Actualizar dibujo del ahorcado
+	                try {
+	                    int numIntentos = Integer.parseInt(intentos);
+	                    int errores = 10 - numIntentos;
+	                    panelAhorcado.setErrores(errores);
+	                } catch (NumberFormatException e) {
+	                    e.printStackTrace();
+	                }
+	            }
+	            
+	        } else if (linea.contains("Letras usadas:")) {
+	            int indice = linea.indexOf(":");
+	            if (indice != -1 && indice + 1 < linea.length()) {
+	                String letras = linea.substring(indice + 1).trim();
+	                areaLetrasUsadas.setText(letras);
+	            }
+	        }
+	    }
 	}
 
 	public void mostrarMensaje(String mensaje) {

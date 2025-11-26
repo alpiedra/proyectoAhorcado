@@ -1,2 +1,83 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<historialPartidas></historialPartidas>
+<historialPartidas>
+	<partida id="P1">
+		<fecha>2025-11-26 22:33:09</fecha>
+		<modo>concurrente</modo>
+		<jugadores>alicia</jugadores>
+		<palabra>POPPADUMS</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P1">
+		<fecha>2025-11-26 22:42:29</fecha>
+		<modo>concurrente</modo>
+		<jugadores>fs, xsa</jugadores>
+		<palabra>OSCILOSCOPIO</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P2">
+		<fecha>2025-11-26 22:42:37</fecha>
+		<modo>concurrente</modo>
+		<jugadores>fs, xsa</jugadores>
+		<palabra>UNISONANT</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P1">
+		<fecha>2025-11-26 22:45:07</fecha>
+		<modo>concurrente</modo>
+		<jugadores>sdg, sdg</jugadores>
+		<palabra>INFINITO</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P2">
+		<fecha>2025-11-26 22:45:14</fecha>
+		<modo>concurrente</modo>
+		<jugadores>sdg</jugadores>
+		<palabra>PLATINO</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P3">
+		<fecha>2025-11-26 22:45:21</fecha>
+		<modo>concurrente</modo>
+		<jugadores>sdg</jugadores>
+		<palabra>REENJOYED</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P4">
+		<fecha>2025-11-26 22:45:26</fecha>
+		<modo>concurrente</modo>
+		<jugadores>sdg</jugadores>
+		<palabra>SU FUERZA</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P5">
+		<fecha>2025-11-26 22:45:32</fecha>
+		<modo>concurrente</modo>
+		<jugadores>sdg</jugadores>
+		<palabra>SEMBRADOS</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P1">
+		<fecha>2025-11-26 22:52:43</fecha>
+		<modo>concurrente</modo>
+		<jugadores>dsf, aaf</jugadores>
+		<palabra>MALAPROPISMOS</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P1">
+		<fecha>2025-11-26 23:05:48</fecha>
+		<modo>concurrente</modo>
+		<jugadores>alicia</jugadores>
+		<palabra>SANTIDAD</palabra>
+		<resultado ganador="alicia" tipo="victoria">alicia ganó la partida
+		</resultado>
+	</partida>
+</historialPartidas>

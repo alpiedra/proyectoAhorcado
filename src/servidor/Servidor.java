@@ -384,4 +384,17 @@ public class Servidor {
 			}
 		}
 	}
+		
+		
+		public synchronized void notificarLetraUsada(String letra) {
+		    for (ManejadorCliente jugador : jugadoresTurnos) {
+		        jugador.enviarMensaje(Mensaje.LETRA_USADA, letra);
+		    }
+		}
+		public synchronized void notificarLetraUsadaConcurrente(String letra) {
+		    for (ManejadorCliente jugador : jugadoresConcurrentes) {
+		        jugador.enviarMensaje(Mensaje.LETRA_USADA, letra);
+		    }
+		}
 }
+	

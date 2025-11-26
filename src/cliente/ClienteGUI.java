@@ -174,6 +174,12 @@ public class ClienteGUI extends JFrame {
                     }
                     break;
                     
+                case Mensaje.LETRA_USADA: 
+                    if (panelActual instanceof PanelJuego) {
+                        ((PanelJuego) panelActual).eliminarLetraDelCombo(contenido);
+                    }
+                    break;
+                    
                 case Mensaje.PREGUNTAR_CONTINUAR:
                     System.out.println("Preguntar continuar");
                     partidaIniciada = false;
@@ -213,7 +219,6 @@ public class ClienteGUI extends JFrame {
                 System.err.println("ERROR: salida es null");
             }
         } catch (IOException e) {
-            System.err.println("Error al enviar mensaje: " + e.getMessage());
             e.printStackTrace();
         }
     }

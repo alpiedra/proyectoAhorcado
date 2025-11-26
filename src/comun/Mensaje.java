@@ -25,7 +25,8 @@ public class Mensaje implements Serializable {
 	public static final String PARTIDA_TERMINADA = "partida_terminada";
 	public static final String ERROR = "error";
 	public static final String PREGUNTAR_CONTINUAR = "preguntar_continuar";
-
+	public static final String LETRA_USADA = "letra_usada";
+	
 	private String tipo;
 	private String contenido;
 

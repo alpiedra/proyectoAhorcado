@@ -116,7 +116,6 @@ public class Cliente {
 			break;
 
 		default:
-			System.err.println("Tipo de mensaje desconocido: " + tipo+ "\n");
 			break;
 		}
 	}

@@ -103,6 +103,7 @@ public class ManejadorCliente implements Runnable {
 
 				char letra = letraStr.charAt(0);
 				Juego juego = servidor.getJuegoTurnos();
+				servidor.notificarLetraUsada(letraStr);
 				Juego.ResultadoIntento resultado = juego.intentarLetra(letra);
 
 				servidor.notificarEstadoATodos(
@@ -118,6 +119,8 @@ public class ManejadorCliente implements Runnable {
 				}
 
 			} else if ("concurrente".equals(modoJuego)) {
+				String letraStr = mensaje.getContenido();
+                servidor.notificarLetraUsadaConcurrente(letraStr);
 				procesarLetraConcurrente(mensaje);
 			}
 			break;
