@@ -164,7 +164,7 @@ public class Servidor {
 
 	// Se muestra elo mensaje al finalizar una partida
 	public synchronized void preguntarContinuarTurnos() {
-		String pregunta = "\n¿Jugar otra ronda?\n" + "   'si' para continuar\n" + "   'no' para salir\n";
+		String pregunta = "¿Jugar otra ronda?\n" + "   'si' para continuar\n" + "   'no' para salir\n";
 
 		for (ManejadorCliente jugador : jugadoresTurnos) {
 			jugador.enviarMensaje(Mensaje.PREGUNTAR_CONTINUAR, pregunta);
@@ -175,12 +175,12 @@ public class Servidor {
 			throws IOException {
 
 		if ("no".equalsIgnoreCase(respuesta)) {
-			notificarEstadoATodos("\nEl jugador " + cliente.getNombreJugador() + " ha salido de la partida.\n");
-			cliente.enviarMensaje(Mensaje.ESTADO_JUEGO, "\nHas salido de la partida. Adiós!\n");
+			notificarEstadoATodos("El jugador " + cliente.getNombreJugador() + " ha salido de la partida.\n");
+			cliente.enviarMensaje(Mensaje.ESTADO_JUEGO, "Has salido de la partida. Adiós!\n");
 			jugadoresTurnos.remove(cliente);
 			cliente.desconectar();
 		} else {
-			cliente.enviarMensaje(Mensaje.PREGUNTAR_CONTINUAR, "\nSigues en la partida.\n");
+			cliente.enviarMensaje(Mensaje.PREGUNTAR_CONTINUAR, "Sigues en la partida.\n");
 		}
 		// Guardar resultado de la partida que acaba de terminar
 	    if (juegoTurnos != null && juegoTurnos.haTerminado()) {
@@ -265,7 +265,7 @@ public class Servidor {
 
 	// se hace la pregunta cuando se acaba una partida
 	public synchronized void preguntarContinuarConcurrente() {
-		String pregunta = "\n¿Jugar otra ronda?\n" + "   'si' para continuar\n" + "   'no' para salir\n";
+		String pregunta = "¿Jugar otra ronda?\n" + "   'si' para continuar\n" + "   'no' para salir\n";
 
 		for (ManejadorCliente jugador : jugadoresConcurrentes) {
 			jugador.enviarMensaje(Mensaje.PREGUNTAR_CONTINUAR, pregunta);
@@ -277,8 +277,8 @@ public class Servidor {
 
 		if ("no".equalsIgnoreCase(respuesta)) {
 
-			notificarConcurrentesATodos("\nEl jugador " + cliente.getNombreJugador() + " ha salido de la partida.\n");
-			cliente.enviarMensaje(Mensaje.ESTADO_JUEGO, "\nHas salido de la partida. Adiós!\n");
+			notificarConcurrentesATodos("El jugador " + cliente.getNombreJugador() + " ha salido de la partida.\n");
+			cliente.enviarMensaje(Mensaje.ESTADO_JUEGO, "Has salido de la partida. Adiós!\n");
 			jugadoresConcurrentes.remove(cliente);
 			cliente.desconectar();
 

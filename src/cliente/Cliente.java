@@ -69,16 +69,16 @@ public class Cliente {
 			System.out.println("\n" + contenido);
 			if (contenido.toLowerCase().contains("nombre")) {
 				esperandoNombre = true;
-				System.out.print("Tu nombre: ");
+				System.out.print("Tu nombre: \n");
 			} else {
 				esperandoNombre = false;
-				System.out.print("Elige una opción: ");
+				System.out.print("Elige una opción: \n");
 			}
 			break;
 
 		case Mensaje.TU_TURNO:
-			System.out.println("\n" + contenido);
-			System.out.print("Introduce una letra: ");
+			System.out.println(contenido+"\n");
+			System.out.print("Introduce una letra: \n");
 			break;
 
 		case Mensaje.ESPERAR_TURNO:
@@ -88,31 +88,31 @@ public class Cliente {
 		case Mensaje.ESTADO_JUEGO:
 			System.out.println(contenido);
 			if (contenido.contains("Partida finalizada")) {
-				System.out.println("Saliendo...");
+				System.out.println("Saliendo...\n");
 				cerrar = true;
 			}
 			break;
 
 		case Mensaje.RESULTADO_INTENTO:
-			System.out.println(contenido);
+			System.out.println(contenido+ "\n");
 			break;
 
 		case Mensaje.PARTIDA_TERMINADA:
-			System.out.println("\n" + contenido);
+			System.out.println(contenido+"\n");
 			break;
 
 		case Mensaje.ERROR:
-			System.err.println("Error: " + contenido);
+			System.err.println("Error: " + contenido+ "\n");
 			break;
 
 		case Mensaje.PREGUNTAR_CONTINUAR:
-			System.out.println("\n" + contenido);
-			System.out.print("Tu respuesta (si/no): ");
+			System.out.println(contenido+"\n");
+			System.out.print("Tu respuesta (si/no): \n");
 			esperandoContinuar = true;
 			break;
 
 		default:
-			System.err.println("Tipo de mensaje desconocido: " + tipo);
+			System.err.println("Tipo de mensaje desconocido: " + tipo+ "\n");
 			break;
 		}
 	}
@@ -152,9 +152,9 @@ public class Cliente {
 
 					} else {
 						// Opción no válida: mostrar mensaje
-						System.out.println("\n  Opción no válida: \"" + input + "\"");
+						System.out.println("  Opción no válida: \"" + input + "\"");
 						System.out.println("   Escribe: 1 (turnos), 2 (concurrente) o 'salir'");
-						System.out.print("\nElige una opción: ");
+						System.out.print("\nElige una opción: \n");
 					}
 					continue;
 				}
@@ -166,8 +166,8 @@ public class Cliente {
 						esperandoContinuar = false;
 					} else {
 						// Mensaje local: insistir hasta que el usuario escriba si/no
-						System.out.println("\nRespuesta no válida. Escribe 'si' o 'no'.");
-						System.out.print("Tu respuesta (si/no): ");
+						System.out.println("Respuesta no válida. Escribe 'si' o 'no'.");
+						System.out.print("Tu respuesta (si/no): \n");
 					}
 					continue;
 				}
@@ -183,7 +183,7 @@ public class Cliente {
 
 					// Entrada no válida
 				} else {
-					System.out.println("\n  Entrada no válida: \"" + input + "\"");
+					System.out.println("  Entrada no válida: \"" + input + "\"");
 
 					if (input.length() > 1) {
 						System.out.println("   Solo puedes escribir UNA letra");
@@ -212,7 +212,7 @@ public class Cliente {
 
 	private void cerrarYSalir(ObjectOutputStream salida) {
 		cerrar = true;
-		System.out.println("\nCerrando sesión...");
+		System.out.println("Cerrando sesión...\n");
 		enviarMensaje(salida, Mensaje.DESCONECTAR, "");
 	}
 

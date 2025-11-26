@@ -106,7 +106,7 @@ public class ManejadorCliente implements Runnable {
 				Juego.ResultadoIntento resultado = juego.intentarLetra(letra);
 
 				servidor.notificarEstadoATodos(
-						"\nTurno de: " + nombreJugador + "\n" + construirMensajeResultado(resultado, juego));
+						"Turno de: " + nombreJugador + "\n" + construirMensajeResultado(resultado, juego));
 
 				if (resultado.ganado || resultado.perdido) {
 					servidor.notificarEstadoATodos(resultado.ganado
