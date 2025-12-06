@@ -11,7 +11,7 @@ import java.util.Date;
 
 public class GuardarPartida {
 
-	private static final String ARCHIVO_XML = "historial.xml";
+	private static final String ARCHIVO_XML = "src/historial.xml";
 	private static int contadorPartidas = 1;
 
 //Guarda las partidas en el documento xml
@@ -30,7 +30,7 @@ public class GuardarPartida {
 				raiz = doc.getDocumentElement();
 			} else {
 				doc = db.newDocument();
-				raiz = doc.createElement("historialPartidas");
+				raiz = doc.createElement("src/historialPartidas");
 				doc.appendChild(raiz);
 			}
 

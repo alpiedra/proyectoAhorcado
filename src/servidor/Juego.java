@@ -90,7 +90,7 @@ public class Juego {
 	// Selecciona palabras del archivo
 	private static String cargarPalabra() {
 		List<String> palabras = new ArrayList<>();
-		try (BufferedReader br = new BufferedReader(new FileReader("palabras.txt"))) {
+		try (BufferedReader br = new BufferedReader(new FileReader("src/palabras.txt"))) {
 			String linea;
 			while ((linea = br.readLine()) != null) {
 				palabras.add(linea.trim().toUpperCase());
