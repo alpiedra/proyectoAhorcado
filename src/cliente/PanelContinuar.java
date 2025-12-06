@@ -99,21 +99,7 @@ public class PanelContinuar extends JPanel {
         gbc.insets = new Insets(15, 15, 15, 15);
         add(panelBotones, gbc);
         
-     //Botón salir
-        gbc.gridy = 4;  // siguiente fila
-        JButton btnSalir = new JButton("Salir");
-        btnSalir.setFont(new Font("Arial", Font.PLAIN, 16));
-        btnSalir.setBackground(new Color(230, 200, 220));
-        btnSalir.setForeground(Color.BLACK);
-        btnSalir.setFocusPainted(false);
-        btnSalir.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(210, 180, 200), 2),
-            BorderFactory.createEmptyBorder(6, 12, 6, 12)
-        ));
-        btnSalir.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnSalir.addActionListener(e -> ventanaPrincipal.salir());
-
-        add(btnSalir, gbc);
+     
 
     }
     

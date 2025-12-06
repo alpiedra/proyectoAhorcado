@@ -189,10 +189,10 @@ public class Servidor {
 		}
 	}
 
-	public synchronized void procesarRespuestaContinuarTurnos(ManejadorCliente cliente, String respuesta)
-			throws IOException {
+	public synchronized void procesarRespuestaContinuarTurnos(ManejadorCliente cliente, String respuesta) {
 
 		// Registrar la respuesta del jugador
+
 		boolean quiereContinuar = "si".equalsIgnoreCase(respuesta);
 		respuestasContinuarTurnos.put(cliente, quiereContinuar);
 		jugadoresQueRespondieron++;
@@ -228,16 +228,35 @@ public class Servidor {
 				}
 			}
 
+			List<ManejadorCliente> jugadoresFinales = new ArrayList<>(jugadoresTurnos);
+
 			for (ManejadorCliente c : aEliminar) {
-				jugadoresTurnos.remove(c);
-				c.desconectar();
+				jugadoresFinales.remove(c);
+			}
+			jugadoresTurnos = jugadoresFinales;
+
+			// Desconectar clientes en un hilo separado para evitar bloqueos
+			for (ManejadorCliente c : aEliminar) {
+				final ManejadorCliente cliente_a_desconectar = c;
+				pool.execute(() -> {
+					try {
+						Thread.sleep(100); // Pequeña pausa para que el mensaje llegue
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					cliente_a_desconectar.desconectar();
+				});
 			}
 
 			// Reiniciar si quedan jugadores
 			if (!jugadoresTurnos.isEmpty()) {
 				String mensaje = "\n¡Todos han respondido! Iniciando nueva partida...\n";
 				notificarEstadoATodos(mensaje);
-				reiniciarJuego();
+				try {
+					reiniciarJuego();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			} else {
 				System.out.println("No quedan jugadores en modo turnos");
 			}
@@ -358,7 +377,19 @@ public class Servidor {
 
 			for (ManejadorCliente c : aEliminar) {
 				jugadoresConcurrentes.remove(c);
-				c.desconectar();
+			}
+
+			// Desconectar en hilo separado
+			for (ManejadorCliente c : aEliminar) {
+				final ManejadorCliente cliente_a_desconectar = c;
+				pool.execute(() -> {
+					try {
+						Thread.sleep(100); // Pequeña pausa para que el mensaje llegue
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					cliente_a_desconectar.desconectar();
+				});
 			}
 
 			// Reiniciar si quedan jugadores

@@ -2,6 +2,7 @@ package cliente;
 
 import comun.Mensaje;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -15,7 +16,7 @@ public class Cliente {
 	private String HOST = "localhost";
 	private int PUERTO = 5000;
 	private boolean esperandoNombre = false;
-	private boolean cerrar = false;
+	private volatile boolean cerrar = false;
 	private boolean esperandoContinuar = false;
 
 	// Comenzamos conexión con el servidor, lanzamos primer hilo
@@ -51,14 +52,34 @@ public class Cliente {
 	// Mensajes del servidor
 	private void recibirMensajes(ObjectInputStream ois) {
 		try {
-			while (true) {
+			while (!cerrar) {
 				Mensaje mensaje = (Mensaje) ois.readObject();
 				procesarMensajeServidor(mensaje);
+				
+				// Si recibimos orden de desconectar, salir del bucle
+				if (cerrar) {
+					break;
+				}
 			}
-		} catch (IOException | ClassNotFoundException e) {
+		} catch (EOFException e) {
+			// El servidor cerró la conexión
+			if (!cerrar) {
+				System.out.println("\nEl servidor cerró la conexión.");
+			}
+		} catch (IOException e) {
+			if (!cerrar) {
 			e.printStackTrace();
+			}
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} finally {
+			// Forzar salida cuando el servidor cierra la conexión
+			if (cerrar) {
+				System.exit(0);
+			}
 		}
 	}
+
 
 	// Maneja el mensaje del servidor según el tipo que sea
 	private void procesarMensajeServidor(Mensaje mensaje) {
@@ -96,9 +117,9 @@ public class Cliente {
 
 		case Mensaje.ESTADO_JUEGO:
 			System.out.println(contenido + "\n");
-			if (contenido.contains("Partida finalizada")) {
-				System.out.println("Saliendo...\n");
+			if (contenido.contains("Partida finalizada") | contenido.contains("Has salido de la partida")) {
 				this.cerrar = true;
+				
 			}
 			break;
 
@@ -119,88 +140,90 @@ public class Cliente {
 			System.out.print("Tu respuesta (si/no): \n");
 			this.esperandoContinuar = true;
 			break;
+		case Mensaje.DESCONECTAR:
+		    this.cerrar = true;
+		    return;
+
 
 		default:
-			System.err.println("Tipo de mensaje desconocido: " + tipo + "\n");
 			break;
 		}
 	}
 
 //Lee del teclado y se envía mensaje al servidor
 	private void enviarMensajes(ObjectOutputStream oos, Scanner sc) {
-		try {
-			boolean modoElegido = false;
-			this.esperandoNombre = true;
+		boolean modoElegido = false;
+		this.esperandoNombre = true;
 
-			while (!this.cerrar) {
-				String s = sc.nextLine();
-				if (s.isEmpty()) {
+		while (!this.cerrar && sc.hasNextLine()) {
+			String s = sc.nextLine();
+			if (this.cerrar) {
+				break;
+			}
+			if (s.isEmpty()) {
+				continue;
+			}
+			if (this.esperandoNombre) {
+				enviarMensaje(oos, Mensaje.ENVIAR_NOMBRE, s);
+				this.esperandoNombre = false;
+				continue;
+			}
+
+			if (!modoElegido) {
+				// Validar que sea 1, 2 o salir
+				if (s.equals("1")) {
+					enviarMensaje(oos, Mensaje.ELEGIR_MODO, "turnos");
+					modoElegido = true;
 					continue;
-				}
-				if (this.esperandoNombre) {
-					enviarMensaje(oos, Mensaje.ENVIAR_NOMBRE, s);
-					this.esperandoNombre = false;
+
+				} else if (s.equals("2")) {
+					enviarMensaje(oos, Mensaje.ELEGIR_MODO, "concurrente");
+					modoElegido = true;
 					continue;
-				}
 
-				if (!modoElegido) {
-					// Validar que sea 1, 2 o salir
-					if (s.equals("1")) {
-						enviarMensaje(oos, Mensaje.ELEGIR_MODO, "turnos");
-						modoElegido = true;
-						continue;
-
-					} else if (s.equals("2")) {
-						enviarMensaje(oos, Mensaje.ELEGIR_MODO, "concurrente");
-						modoElegido = true;
-						continue;
-
-					} else if (s.equals("salir")) {
-						cerrarYSalir(oos);
-						return;
-
-					} else {
-						// Opción no válida: mostrar mensaje
-						System.out.println("  Opción no válida: \"" + s + "\"");
-						System.out.println("   Escribe: 1 (turnos), 2 (concurrente) o 'salir'");
-						System.out.print("\nElige una opción: \n");
-					}
-					continue;
-				}
-				// Si estamos esperando la respuesta de continuar, forzar solo si/no
-				if (this.esperandoContinuar) {
-					String lower = s.trim().toLowerCase();
-					if (lower.equals("si") || lower.equals("no")) {
-						enviarMensaje(oos, Mensaje.RESPUESTA_CONTINUAR, lower);
-						this.esperandoContinuar = false;
-					} else {
-						// Mensaje local: insistir hasta que el usuario escriba si/no
-						System.out.println("Respuesta no válida. Escribe 'si' o 'no'.\n");
-						System.out.print("Tu respuesta (si/no): \n");
-					}
-					continue;
-				}
-				// Comando: SALIR
-				if (s.equalsIgnoreCase("salir")) {
+				} else if (s.equals("salir")) {
 					cerrarYSalir(oos);
 					return;
-				} // Intentar una letra
-				else if (s.length() == 1 && Character.isLetter(s.charAt(0))) {
-					enviarMensaje(oos, Mensaje.INTENTAR_LETRA, s.toUpperCase());
 
-					// Entrada no válida
 				} else {
-					System.out.println("  Entrada no válida: \"" + s + "\"\n");
+					// Opción no válida: mostrar mensaje
+					System.out.println("  Opción no válida: \"" + s + "\"");
+					System.out.println("   Escribe: 1 (turnos), 2 (concurrente) o 'salir'");
+					System.out.print("\nElige una opción: \n");
+				}
+				continue;
+			}
+			// Si estamos esperando la respuesta de continuar, forzar solo si/no
+			if (this.esperandoContinuar) {
+				String lower = s.trim().toLowerCase();
+				if (lower.equals("si") || lower.equals("no")) {
+					enviarMensaje(oos, Mensaje.RESPUESTA_CONTINUAR, lower);
+					this.esperandoContinuar = false;
+				} else {
+					// Mensaje local: insistir hasta que el usuario escriba si/no
+					System.out.println("Respuesta no válida. Escribe 'si' o 'no'.\n");
+					System.out.print("Tu respuesta (si/no): \n");
+				}
+				continue;
+			}
+			// Comando: SALIR
+			if (s.equalsIgnoreCase("salir")) {
+				cerrarYSalir(oos);
+				return;
+			} // Intentar una letra
+			else if (s.length() == 1 && Character.isLetter(s.charAt(0))) {
+				enviarMensaje(oos, Mensaje.INTENTAR_LETRA, s.toUpperCase());
 
-					if (s.length() > 1) {
-						System.out.println("   Solo puedes escribir UNA letra\n");
-					} else if (s.length() == 1) {
-						System.out.println("   Debes escribir una LETRA (A-Z)\n");
-					}
+				// Entrada no válida
+			} else {
+				System.out.println("  Entrada no válida: \"" + s + "\"\n");
+
+				if (s.length() > 1) {
+					System.out.println("   Solo puedes escribir UNA letra\n");
+				} else if (s.length() == 1) {
+					System.out.println("   Debes escribir una LETRA (A-Z)\n");
 				}
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
 	}
 

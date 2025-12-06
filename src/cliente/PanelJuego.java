@@ -10,7 +10,7 @@ public class PanelJuego extends JPanel {
 
 	private JComboBox<String> comboLetras;
 	private JTextArea areaLetrasUsadas;
-	private JLabel lblPalabra;
+	private JTextArea lblPalabra;
 	private JLabel lblIntentos;
 	private JLabel lblMensaje;
 	private JButton btnEnviar;
@@ -85,13 +85,22 @@ public class PanelJuego extends JPanel {
 						javax.swing.border.TitledBorder.DEFAULT_POSITION, new Font("Arial", Font.PLAIN, 14)));
 
 		// Palabra
-		lblPalabra = new JLabel("Palabra: _ _ _ _ _");
+		lblPalabra = new JTextArea("Palabra: _ _ _ _ _");
 		lblPalabra.setFont(new Font("Monospaced", Font.PLAIN, 20));
 		lblPalabra.setAlignmentX(Component.CENTER_ALIGNMENT);
-		lblPalabra.setPreferredSize(new Dimension(350, 60));
-		lblPalabra.setMaximumSize(new Dimension(350, 60));
-		lblPalabra.setHorizontalAlignment(SwingConstants.CENTER);
-		panelInfo.add(lblPalabra);
+		lblPalabra.setEditable(false);
+		lblPalabra.setLineWrap(true); 
+		lblPalabra.setWrapStyleWord(false);
+		lblPalabra.setBackground(Color.WHITE); 
+		lblPalabra.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); 
+		lblPalabra.setFocusable(false); 
+		lblPalabra.setRows(3);
+
+		JScrollPane scrollPalabra = new JScrollPane(lblPalabra);
+		scrollPalabra.setBorder(null);
+		scrollPalabra.setMaximumSize(new Dimension(350, 100));
+		scrollPalabra.setAlignmentX(Component.CENTER_ALIGNMENT);
+		panelInfo.add(scrollPalabra);
 
 		panelInfo.add(Box.createVerticalStrut(20));
 

@@ -1,6 +1,8 @@
 package cliente;
 
 import javax.swing.*;
+
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -39,7 +41,7 @@ public class ClienteGUI extends JFrame {
 		setSize(800, 600);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setLocationRelativeTo(null);
-		setResizable(false);
+		setResizable(true);
 	}
 
 	// Paneles
@@ -98,7 +100,24 @@ public class ClienteGUI extends JFrame {
 				Mensaje mensaje = (Mensaje) entrada.readObject();
 				procesarMensajeServidor(mensaje);
 			}
-		} catch (IOException | ClassNotFoundException e) {
+		} catch (EOFException e) {
+			// El servidor cerró la conexión
+			SwingUtilities.invokeLater(() -> {
+				dispose(); // Cierra la ventana
+				System.exit(0);
+			});
+		} catch (java.net.SocketException e) {
+			// Conexión perdida abruptamente
+			SwingUtilities.invokeLater(() -> {
+				dispose();
+				System.exit(0);
+			});
+		} catch (IOException e) {
+			SwingUtilities.invokeLater(() -> {
+				dispose();
+				System.exit(0);
+			});
+		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		}
 	}
@@ -185,6 +204,11 @@ public class ClienteGUI extends JFrame {
 
 			case Mensaje.ERROR:
 				JOptionPane.showMessageDialog(this, contenido, "Error", JOptionPane.ERROR_MESSAGE);
+				break;
+			
+			case Mensaje.DESCONECTAR:
+				dispose(); // Cierra la ventana
+				System.exit(0);
 				break;
 
 			default:
