@@ -14,8 +14,8 @@ public class ManejadorCliente implements Runnable {
 	private Socket socket;
 	private Servidor servidor;
 	private String modoJuego;
-	private ObjectOutputStream salida;
-	private ObjectInputStream entrada;
+	private ObjectOutputStream oos;
+	private ObjectInputStream ois;
 	private String nombreJugador;
 	private volatile boolean cerrado = false;
 
@@ -29,23 +29,23 @@ public class ManejadorCliente implements Runnable {
 	@Override
 	public void run() {
 		try {
-			salida = new ObjectOutputStream(socket.getOutputStream());
-			entrada = new ObjectInputStream(socket.getInputStream());
+			oos = new ObjectOutputStream(socket.getOutputStream());
+			ois = new ObjectInputStream(socket.getInputStream());
 
 			enviarMensaje(Mensaje.BIENVENIDA, "¡Bienvenido al Ahorcado!");
 
 			enviarMensaje(Mensaje.SOLICITAR_MODO, "Por favor, ingresa tu nombre:");
-			Mensaje mensajeNombre = (Mensaje) entrada.readObject();
+			Mensaje mensajeNombre = (Mensaje) ois.readObject();
 			this.nombreJugador = mensajeNombre.getContenido();
 			if (nombreJugador.isEmpty()) {
 				nombreJugador = "Jugador";
 			}
-			enviarMensaje(Mensaje.ESTADO_JUEGO, "Hola, " + nombreJugador);
+			enviarMensaje(Mensaje.ESTADO_JUEGO, "Hola, " + nombreJugador + "\n");
 			enviarMensaje(Mensaje.SOLICITAR_MODO,
 					"¿Qué modo deseas jugar?\n" + "   1️ Por turnos\n" + "   2️ Concurrente\n" + "Escribe 1 o 2");
 			while (!cerrado) {
 				try {
-					Mensaje mensaje = (Mensaje) entrada.readObject();
+					Mensaje mensaje = (Mensaje) ois.readObject();
 
 					if (mensaje.getTipo().equals(Mensaje.DESCONECTAR)) {
 						break;
@@ -66,68 +66,71 @@ public class ManejadorCliente implements Runnable {
 	}
 
 	// Recibe mensaje del cliente y hace la acción que corresponde
-	private void procesarMensaje(Mensaje mensaje) throws IOException {
+	private void procesarMensaje(Mensaje mensaje) {
 		String tipo = mensaje.getTipo();
-
-		switch (tipo) {
-		case Mensaje.ELEGIR_MODO:
-			modoJuego = mensaje.getContenido();
-			if ("turnos".equals(modoJuego)) {
-				servidor.unirseModoTurnos(this);
-			} else if ("concurrente".equals(modoJuego)) {
-				servidor.unirseModoConcurrente(this);
-			}
-			break;
-
-		case Mensaje.RESPUESTA_CONTINUAR:
-			String respuesta = mensaje.getContenido();
-			if ("turnos".equals(modoJuego)) {
-				servidor.procesarRespuestaContinuarTurnos(this, respuesta);
-			} else if ("concurrente".equals(modoJuego)) {
-				servidor.procesarRespuestaContinuarConcurrente(this, respuesta);
-			}
-			break;
-
-		case Mensaje.INTENTAR_LETRA:
-			if ("turnos".equals(modoJuego)) {
-				if (!servidor.esTuTurno(this)) {
-					enviarMensaje(Mensaje.ERROR, "No es tu turno");
-					break;
+		try {
+			switch (tipo) {
+			case Mensaje.ELEGIR_MODO:
+				modoJuego = mensaje.getContenido();
+				if ("turnos".equals(modoJuego)) {
+					servidor.unirseModoTurnos(this);
+				} else if ("concurrente".equals(modoJuego)) {
+					servidor.unirseModoConcurrente(this);
 				}
+				break;
 
-				String letraStr = mensaje.getContenido();
-				if (letraStr.isEmpty()) {
-					enviarMensaje(Mensaje.ERROR, "Debes introducir una letra");
-					break;
+			case Mensaje.RESPUESTA_CONTINUAR:
+				String respuesta = mensaje.getContenido();
+				if ("turnos".equals(modoJuego)) {
+					servidor.procesarRespuestaContinuarTurnos(this, respuesta);
+				} else if ("concurrente".equals(modoJuego)) {
+					servidor.procesarRespuestaContinuarConcurrente(this, respuesta);
 				}
+				break;
 
-				char letra = letraStr.charAt(0);
-				Juego juego = servidor.getJuegoTurnos();
-				servidor.notificarLetraUsada(letraStr);
-				Juego.ResultadoIntento resultado = juego.intentarLetra(letra);
+			case Mensaje.INTENTAR_LETRA:
+				if ("turnos".equals(modoJuego)) {
+					if (!servidor.esTuTurno(this)) {
+						enviarMensaje(Mensaje.ERROR, "No es tu turno\n");
+						break;
+					}
 
-				servidor.notificarEstadoATodos(
-						"Turno de: " + nombreJugador + "\n" + construirMensajeResultado(resultado, juego));
+					String letraStr = mensaje.getContenido();
+					if (letraStr.isEmpty()) {
+						enviarMensaje(Mensaje.ERROR, "Debes introducir una letra\n");
+						break;
+					}
 
-				if (resultado.ganado || resultado.perdido) {
-					servidor.notificarEstadoATodos(resultado.ganado
-							? "¡" + nombreJugador + " ha ganado! La palabra era: " + juego.getPalabraSecreta()
-							: "Se acabaron los intentos. La palabra era: " + juego.getPalabraSecreta());
-					servidor.preguntarContinuarTurnos();
-				} else {
-					servidor.siguienteTurno();
+					char letra = letraStr.charAt(0);
+					Juego juego = servidor.getJuegoTurnos();
+					servidor.notificarLetraUsada(letraStr);
+					Juego.ResultadoIntento resultado = juego.intentarLetra(letra);
+
+					servidor.notificarEstadoATodos(
+							"Turno de: " + nombreJugador + "\n" + construirMensajeResultado(resultado, juego));
+
+					if (resultado.ganado || resultado.perdido) {
+						servidor.notificarEstadoATodos(resultado.ganado
+								? "¡" + nombreJugador + " ha ganado! La palabra era: " + juego.getPalabraSecreta()
+								: "Se acabaron los intentos. La palabra era: " + juego.getPalabraSecreta());
+						servidor.preguntarContinuarTurnos();
+					} else {
+						servidor.siguienteTurno();
+					}
+
+				} else if ("concurrente".equals(modoJuego)) {
+					String letraStr = mensaje.getContenido();
+					servidor.notificarLetraUsadaConcurrente(letraStr);
+					procesarLetraConcurrente(mensaje);
 				}
+				break;
 
-			} else if ("concurrente".equals(modoJuego)) {
-				String letraStr = mensaje.getContenido();
-                servidor.notificarLetraUsadaConcurrente(letraStr);
-				procesarLetraConcurrente(mensaje);
+			default:
+				enviarMensaje(Mensaje.ERROR, "Tipo de mensaje no reconocido: " + tipo);
+				break;
 			}
-			break;
-
-		default:
-			enviarMensaje(Mensaje.ERROR, "Tipo de mensaje no reconocido: " + tipo);
-			break;
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -136,10 +139,10 @@ public class ManejadorCliente implements Runnable {
 	public synchronized void enviarMensaje(String tipo, String contenido) {
 		try {
 			// Serializa y envia el mensaje, con flush() forzamos el envio
-			if (salida != null && !cerrado) {
+			if (oos != null && !cerrado) {
 				Mensaje mensaje = new Mensaje(tipo, contenido);
-				salida.writeObject(mensaje);
-				salida.flush();
+				oos.writeObject(mensaje);
+				oos.flush();
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -178,6 +181,10 @@ public class ManejadorCliente implements Runnable {
 			return;
 		}
 
+		if (letraStr.length() != 1 || !Character.isLetter(letraStr.charAt(0))) {
+			enviarMensaje(Mensaje.ERROR, "Debes introducir una sola letra \n");
+			return;
+		}
 		char letra = letraStr.charAt(0);
 		JuegoConcurrente juego = servidor.getJuegoConcurrente();
 

@@ -17,25 +17,31 @@ public class Cliente {
 	private boolean esperandoNombre = false;
 	private boolean cerrar = false;
 	private boolean esperandoContinuar = false;
+
 	// Comenzamos conexión con el servidor, lanzamos primer hilo
+	// Crea cliente y lo conecta al servidor
+	public static void main(String[] args) {
+		Cliente cliente = new Cliente();
+		cliente.conectar();
+	}
 
 	public void conectar() {
 		try (Socket socket = new Socket(HOST, PUERTO);
-				ObjectOutputStream salida = new ObjectOutputStream(socket.getOutputStream());
-				ObjectInputStream entrada = new ObjectInputStream(socket.getInputStream());
-				Scanner scanner = new Scanner(System.in)) {
+				ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+				ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+				Scanner sc = new Scanner(System.in)) {
 			// Creamos y lanzamos hilo para escuchar los mensajes
 			Thread hilo = new Thread(new Runnable() {
 				@Override
 				public void run() {
-					recibirMensajes(entrada);
+					recibirMensajes(ois);
 				}
 			});
 			hilo.setDaemon(true);// Se cierra cuando principal termina
 			hilo.start();
 
 			// Hilo principal lee del teclado y envia
-			enviarMensajes(salida, scanner);
+			enviarMensajes(oos, sc);
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -43,10 +49,10 @@ public class Cliente {
 	}
 
 	// Mensajes del servidor
-	private void recibirMensajes(ObjectInputStream entrada) {
+	private void recibirMensajes(ObjectInputStream ois) {
 		try {
 			while (true) {
-				Mensaje mensaje = (Mensaje) entrada.readObject();
+				Mensaje mensaje = (Mensaje) ois.readObject();
 				procesarMensajeServidor(mensaje);
 			}
 		} catch (IOException | ClassNotFoundException e) {
@@ -58,7 +64,6 @@ public class Cliente {
 	private void procesarMensajeServidor(Mensaje mensaje) {
 		String tipo = mensaje.getTipo();
 		String contenido = mensaje.getContenido();
-		esperandoContinuar = false;
 
 		switch (tipo) {
 		case Mensaje.BIENVENIDA:
@@ -66,132 +71,131 @@ public class Cliente {
 			break;
 
 		case Mensaje.SOLICITAR_MODO:
-			System.out.println( contenido+"\n");
+			System.out.println(contenido + "\n");
 			if (contenido.toLowerCase().contains("nombre")) {
-				esperandoNombre = true;
-				esperandoContinuar = false;
+				this.esperandoNombre = true;
+				this.esperandoContinuar = false;
 				System.out.print("Tu nombre: \n");
 			} else {
-				esperandoNombre = false;
-				esperandoContinuar = false;
+				this.esperandoNombre = false;
+				this.esperandoContinuar = false;
 				System.out.print("Elige una opción: \n");
 			}
 			break;
 
 		case Mensaje.TU_TURNO:
-			esperandoContinuar = false;
-			System.out.println(contenido+"\n");
+			this.esperandoContinuar = false;
+			System.out.println(contenido + "\n");
 			System.out.print("Introduce una letra: \n");
 			break;
 
 		case Mensaje.ESPERAR_TURNO:
-			esperandoContinuar = false;
+			this.esperandoContinuar = false;
 			System.out.println(contenido);
 			break;
 
 		case Mensaje.ESTADO_JUEGO:
-			System.out.println(contenido);
+			System.out.println(contenido + "\n");
 			if (contenido.contains("Partida finalizada")) {
 				System.out.println("Saliendo...\n");
-				cerrar = true;
+				this.cerrar = true;
 			}
 			break;
 
 		case Mensaje.RESULTADO_INTENTO:
-			System.out.println(contenido+ "\n");
+			System.out.println(contenido + "\n");
 			break;
 
 		case Mensaje.PARTIDA_TERMINADA:
-			System.out.println(contenido+"\n");
+			System.out.println(contenido + "\n");
 			break;
 
 		case Mensaje.ERROR:
-			System.err.println("Error: " + contenido+ "\n");
+			System.err.println("Error: " + contenido + "\n");
 			break;
 
 		case Mensaje.PREGUNTAR_CONTINUAR:
-			System.out.println(contenido+"\n");
+			System.out.println(contenido + "\n");
 			System.out.print("Tu respuesta (si/no): \n");
-			esperandoContinuar = true;
+			this.esperandoContinuar = true;
 			break;
 
 		default:
+			System.err.println("Tipo de mensaje desconocido: " + tipo + "\n");
 			break;
 		}
 	}
 
 //Lee del teclado y se envía mensaje al servidor
-	private void enviarMensajes(ObjectOutputStream salida, Scanner scanner) {
+	private void enviarMensajes(ObjectOutputStream oos, Scanner sc) {
 		try {
 			boolean modoElegido = false;
-			esperandoNombre = true;
+			this.esperandoNombre = true;
 
-			while (!cerrar) {
-				String input = scanner.nextLine();
-				if (input.isEmpty()) {
+			while (!this.cerrar) {
+				String s = sc.nextLine();
+				if (s.isEmpty()) {
 					continue;
 				}
-				if (esperandoNombre) {
-					enviarMensaje(salida, Mensaje.ENVIAR_NOMBRE, input);
-					esperandoNombre = false;
+				if (this.esperandoNombre) {
+					enviarMensaje(oos, Mensaje.ENVIAR_NOMBRE, s);
+					this.esperandoNombre = false;
 					continue;
 				}
 
 				if (!modoElegido) {
 					// Validar que sea 1, 2 o salir
-					if (input.equals("1")) {
-						enviarMensaje(salida, Mensaje.ELEGIR_MODO, "turnos");
+					if (s.equals("1")) {
+						enviarMensaje(oos, Mensaje.ELEGIR_MODO, "turnos");
 						modoElegido = true;
 						continue;
 
-					} else if (input.equals("2")) {
-						enviarMensaje(salida, Mensaje.ELEGIR_MODO, "concurrente");
+					} else if (s.equals("2")) {
+						enviarMensaje(oos, Mensaje.ELEGIR_MODO, "concurrente");
 						modoElegido = true;
 						continue;
 
-					} else if (input.equals("salir")) {
-						cerrarYSalir(salida);
+					} else if (s.equals("salir")) {
+						cerrarYSalir(oos);
 						return;
 
 					} else {
 						// Opción no válida: mostrar mensaje
-						System.out.println("  Opción no válida: \"" + input + "\"");
+						System.out.println("  Opción no válida: \"" + s + "\"");
 						System.out.println("   Escribe: 1 (turnos), 2 (concurrente) o 'salir'");
 						System.out.print("\nElige una opción: \n");
 					}
 					continue;
 				}
 				// Si estamos esperando la respuesta de continuar, forzar solo si/no
-				if (esperandoContinuar) {
-					String lower = input.trim().toLowerCase();
+				if (this.esperandoContinuar) {
+					String lower = s.trim().toLowerCase();
 					if (lower.equals("si") || lower.equals("no")) {
-						enviarMensaje(salida, Mensaje.RESPUESTA_CONTINUAR, lower);
-						esperandoContinuar = false;
+						enviarMensaje(oos, Mensaje.RESPUESTA_CONTINUAR, lower);
+						this.esperandoContinuar = false;
 					} else {
 						// Mensaje local: insistir hasta que el usuario escriba si/no
-						System.out.println("Respuesta no válida. Escribe 'si' o 'no'.");
+						System.out.println("Respuesta no válida. Escribe 'si' o 'no'.\n");
 						System.out.print("Tu respuesta (si/no): \n");
 					}
 					continue;
 				}
 				// Comando: SALIR
-				if (input.equalsIgnoreCase("salir")) {
-					cerrarYSalir(salida);
+				if (s.equalsIgnoreCase("salir")) {
+					cerrarYSalir(oos);
 					return;
-				} else if (input.equalsIgnoreCase("si") || input.equalsIgnoreCase("no")) {
-					enviarMensaje(salida, Mensaje.RESPUESTA_CONTINUAR, input.toLowerCase());
 				} // Intentar una letra
-				else if (input.length() == 1 && Character.isLetter(input.charAt(0))) {
-					enviarMensaje(salida, Mensaje.INTENTAR_LETRA, input.toUpperCase());
+				else if (s.length() == 1 && Character.isLetter(s.charAt(0))) {
+					enviarMensaje(oos, Mensaje.INTENTAR_LETRA, s.toUpperCase());
 
 					// Entrada no válida
 				} else {
-					System.out.println("  Entrada no válida: \"" + input + "\"");
+					System.out.println("  Entrada no válida: \"" + s + "\"\n");
 
-					if (input.length() > 1) {
-						System.out.println("   Solo puedes escribir UNA letra");
-					} else if (input.length() == 1) {
-						System.out.println("   Debes escribir una LETRA (A-Z)");
+					if (s.length() > 1) {
+						System.out.println("   Solo puedes escribir UNA letra\n");
+					} else if (s.length() == 1) {
+						System.out.println("   Debes escribir una LETRA (A-Z)\n");
 					}
 				}
 			}
@@ -201,27 +205,22 @@ public class Cliente {
 	}
 
 	// Crea un objeto y lo envia al servidor
-	private void enviarMensaje(ObjectOutputStream salida, String tipo, String contenido) {
+	private void enviarMensaje(ObjectOutputStream oos, String tipo, String contenido) {
 		try {
-			if (salida != null && !cerrar) {
+			if (oos != null && !this.cerrar) {
 				Mensaje mensaje = new Mensaje(tipo, contenido);
-				salida.writeObject(mensaje);
-				salida.flush();
+				oos.writeObject(mensaje);
+				oos.flush();
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
-	private void cerrarYSalir(ObjectOutputStream salida) {
-		cerrar = true;
+	private void cerrarYSalir(ObjectOutputStream oos) {
+		this.cerrar = true;
 		System.out.println("Cerrando sesión...\n");
-		enviarMensaje(salida, Mensaje.DESCONECTAR, "");
+		enviarMensaje(oos, Mensaje.DESCONECTAR, "");
 	}
 
-	// Crea cliente y lo conecta al servidor
-	public static void main(String[] args) {
-		Cliente cliente = new Cliente();
-		cliente.conectar();
-	}
 }

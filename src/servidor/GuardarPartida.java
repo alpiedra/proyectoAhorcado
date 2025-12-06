@@ -26,11 +26,9 @@ public class GuardarPartida {
 			// Comprobamos si existe el archivo
 			File archivo = new File(ARCHIVO_XML);
 			if (archivo.exists()) {
-				// SÍ existe → lo leemos
 				doc = db.parse(archivo);
 				raiz = doc.getDocumentElement();
 			} else {
-				// NO existe: lo creamos
 				doc = db.newDocument();
 				raiz = doc.createElement("historialPartidas");
 				doc.appendChild(raiz);

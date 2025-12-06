@@ -27,14 +27,20 @@ public class Juego {
 	private int intentosRestantes;
 	private static final int maxIntentos = 10;
 
-	public Juego() throws IOException {
-		this.palabraSecreta = cargarPalabraAleatoria();
-		this.palabraActual = new char[palabraSecreta.length()];
-		for (int i = 0; i < palabraActual.length; i++) {
-			palabraActual[i] = '_';
+	public Juego() {
+		try {
+			this.palabraSecreta = cargarPalabraAleatoria();
+			this.palabraActual = new char[palabraSecreta.length()];
+			for (int i = 0; i < palabraActual.length; i++) {
+				palabraActual[i] = '_';
+			}
+			this.letrasUsadas = new HashSet<>();
+			this.intentosRestantes = maxIntentos;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		this.letrasUsadas = new HashSet<>();
-		this.intentosRestantes = maxIntentos;
+
 	}
 
 	// Métodos estaticos para la carga de palabras:
@@ -89,7 +95,6 @@ public class Juego {
 			while ((linea = br.readLine()) != null) {
 				palabras.add(linea.trim().toUpperCase());
 			}
-			br.close();
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -100,15 +105,14 @@ public class Juego {
 	}
 
 	// Hace petición HTTP y carga 50 palabras
-	private static void cargarPalabrasAPI() throws IOException {
-		HttpURLConnection conn = null;
-		BufferedReader in = null;
+	private static void cargarPalabrasAPI() {
+
 		try {
 			// Crear conexión get
 			String urlString = "https://random-word-api.herokuapp.com/word?lang=es&number=" + tamaño_palabras;
 			URL url = new URL(urlString);
-			conn = (HttpURLConnection) url.openConnection();
-			in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 			String respuesta = in.readLine();
 			// Cambiamos a palabras nomales, vienen así
 			// ["palabra1","palabra2","palabra3",...]
@@ -119,17 +123,9 @@ public class Juego {
 					palabras.add(palabraSola);
 				}
 			}
-		} finally {
-			try {
-				if (in != null) {
-					in.close();
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			if (conn != null) {
-				conn.disconnect();
-			}
+		} catch (IOException e) {
+			e.printStackTrace();
+
 		}
 	}
 

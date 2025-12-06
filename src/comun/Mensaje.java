@@ -4,11 +4,10 @@ import java.io.Serializable;
 
 //Clase usada para representar los mensajes intercambiados entre cliente y servidor
 //Cada mensaje tiene un tipo, que es la acción a realizar, y un contenido, que es el mensaje que se envía
-//Implementa Serializable para poder tratarlo como objetos
+//Implementa Serializable
 public class Mensaje implements Serializable {
 	private static final long serialVersionUID = 1L;
 	// Mensajes que envía el cliente al servidor:
-	public static final String CONECTAR = "conectar";
 	public static final String ELEGIR_MODO = "elegir_modo";
 	public static final String INTENTAR_LETRA = "intentar_letra";
 	public static final String DESCONECTAR = "desconectar";

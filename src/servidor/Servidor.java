@@ -14,36 +14,22 @@ import comun.Mensaje;
 
 public class Servidor {
 	private int puerto = 5000;
-	private List<ManejadorCliente> clientes; // Todos los clientes que están conectados
+	private List<ManejadorCliente> clientes = new ArrayList<>(); // Todos los clientes que están conectados
 	// Partida y jugadores modo turnos
-	private Juego juegoTurnos;
-	private List<ManejadorCliente> jugadoresTurnos;
-	private int turnoActual;
-	private Map<ManejadorCliente, Boolean> respuestasContinuarTurnos;
-	private int jugadoresQueRespondieron;
-	
+	private Juego juegoTurnos = null;
+	private List<ManejadorCliente> jugadoresTurnos = new ArrayList<>();
+	private int turnoActual = 0;
+	private Map<ManejadorCliente, Boolean> respuestasContinuarTurnos = new HashMap<>();;
+	private int jugadoresQueRespondieron = 0;
+
 	// Partida y jugadores modo concurrente
-	private JuegoConcurrente juegoConcurrente;
-	private List<ManejadorCliente> jugadoresConcurrentes;
-	private Map<ManejadorCliente, Boolean> respuestasContinuarConcurrente;
-	private int jugadoresQueRespondieroConc;
-	private int totalJugadoresConcurrentesRonda;
+	private JuegoConcurrente juegoConcurrente = null;
+	private List<ManejadorCliente> jugadoresConcurrentes = new ArrayList<>();
+	private Map<ManejadorCliente, Boolean> respuestasContinuarConcurrente = new HashMap<>();;
+	private int jugadoresQueRespondieroConc = 0;
+	private int totalJugadoresConcurrentesRonda = 0;
 
-	
-	private ExecutorService pool = Executors.newCachedThreadPool();
-
-	public Servidor() {
-		this.clientes = new ArrayList<>();
-		this.juegoTurnos = null;
-		this.jugadoresTurnos = new ArrayList<>();
-		this.turnoActual = 0;
-		this.juegoConcurrente = null;
-		this.jugadoresConcurrentes = new ArrayList<>();
-		this.respuestasContinuarTurnos = new HashMap<>();
-		this.jugadoresQueRespondieron = 0;
-		this.respuestasContinuarConcurrente = new HashMap<>();
-		this.jugadoresQueRespondieroConc = 0;
-	}
+	ExecutorService pool = Executors.newCachedThreadPool();
 
 	public static void main(String[] args) {
 		Servidor servidor = new Servidor();
@@ -54,8 +40,8 @@ public class Servidor {
 	public void iniciar() {
 		try (ServerSocket serverSocket = new ServerSocket(puerto)) {
 			while (true) {
-				Socket socketCliente = serverSocket.accept();
-				ManejadorCliente manejador = new ManejadorCliente(socketCliente, this);
+				Socket cliente = serverSocket.accept();
+				ManejadorCliente manejador = new ManejadorCliente(cliente, this);
 				clientes.add(manejador);
 				pool.execute(manejador); // Utilizamos pool de hilos
 			}
@@ -66,12 +52,11 @@ public class Servidor {
 
 	// Devuelve el juego compartido o lo inicia
 	// Synchronized ya que si varios hilos llaman a este método a la vez se pueden
-	// crear
-	// muchas instancias del juego y solo queremos una que la compartan
+	// crear muchas instancias del juego y solo queremos una que la compartan
 	public synchronized Juego getJuegoTurnos() throws IOException {
 		if (juegoTurnos == null) {
 			juegoTurnos = new Juego();
-			System.out.println("Nueva partida por turnos creada");
+			System.out.println("Nueva partida por turnos creada\n");
 		}
 		return juegoTurnos;
 	}
@@ -162,10 +147,6 @@ public class Servidor {
 				}
 				turnoActual = turnoActual % jugadoresTurnos.size();
 				notificarTurnosATodos();
-			} else {
-				// Si no quedan jugadores, reiniciar el juego
-				juegoTurnos = null;
-				turnoActual = 0;
 			}
 		}
 		if (jugadoresConcurrentes.contains(cliente)) {
@@ -270,22 +251,30 @@ public class Servidor {
 		return juegoConcurrente;
 	}
 
-	public synchronized void unirseModoConcurrente(ManejadorCliente cliente) throws IOException {
+	public synchronized void unirseModoConcurrente(ManejadorCliente cliente) {
 		jugadoresConcurrentes.add(cliente);
 		// Obtener el juego compartido
-		JuegoConcurrente juego = getJuegoConcurrente();
-		String mensaje = "Modo concurrente\n";
-		cliente.enviarEstado(mensaje);
-		String jugadoresActivos = "Jugadores jugando: " + jugadoresConcurrentes.size() + "\n";
-		for (ManejadorCliente j : jugadoresConcurrentes) {
-			jugadoresActivos += "   - " + j.getNombreJugador() + "\n";
-		}
-		notificarConcurrentesATodos(jugadoresActivos);
 
-		// Mostrar estado actual del juego
-		String estadoInicial = construirEstadoConcurrente(juego);
-		cliente.enviarEstado(estadoInicial);
-		cliente.enviarMensaje(Mensaje.TU_TURNO, "Empieza!");
+		try {
+			JuegoConcurrente juego;
+			juego = getJuegoConcurrente();
+			String mensaje = "Modo concurrente\n";
+			cliente.enviarEstado(mensaje);
+			String jugadoresActivos = "Jugadores jugando: " + jugadoresConcurrentes.size() + "\n";
+			for (ManejadorCliente j : jugadoresConcurrentes) {
+				jugadoresActivos += "   - " + j.getNombreJugador() + "\n";
+			}
+			notificarConcurrentesATodos(jugadoresActivos);
+
+			// Mostrar estado actual del juego
+			String estadoInicial = construirEstadoConcurrente(juego);
+			cliente.enviarEstado(estadoInicial);
+			cliente.enviarMensaje(Mensaje.TU_TURNO, "Empieza!");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 	public synchronized void notificarConcurrentesATodos(String mensaje) {
@@ -302,7 +291,7 @@ public class Servidor {
 		return sb.toString();
 	}
 
-	public synchronized void reiniciarJuegoConcurrente() throws IOException {
+	public synchronized void reiniciarJuegoConcurrente() {
 		juegoConcurrente = new JuegoConcurrente();
 		respuestasContinuarConcurrente.clear();
 		jugadoresQueRespondieroConc = 0;
@@ -320,18 +309,16 @@ public class Servidor {
 	// se hace la pregunta cuando se acaba una partida
 	public synchronized void preguntarContinuarConcurrente() {
 		totalJugadoresConcurrentesRonda = jugadoresConcurrentes.size();
-	    respuestasContinuarConcurrente.clear();
-	    jugadoresQueRespondieroConc = 0;
+		respuestasContinuarConcurrente.clear();
+		jugadoresQueRespondieroConc = 0;
 		String pregunta = "¿Jugar otra ronda?\n" + "   'si' para continuar\n" + "   'no' para salir\n";
 
 		for (ManejadorCliente jugador : jugadoresConcurrentes) {
 			jugador.enviarMensaje(Mensaje.PREGUNTAR_CONTINUAR, pregunta);
 		}
 	}
-	
 
-	public synchronized void procesarRespuestaContinuarConcurrente(ManejadorCliente cliente, String respuesta)
-			throws IOException {
+	public synchronized void procesarRespuestaContinuarConcurrente(ManejadorCliente cliente, String respuesta) {
 
 		// Registrar respuesta
 		boolean quiereContinuar = "si".equalsIgnoreCase(respuesta);
@@ -384,17 +371,16 @@ public class Servidor {
 			}
 		}
 	}
-		
-		
-		public synchronized void notificarLetraUsada(String letra) {
-		    for (ManejadorCliente jugador : jugadoresTurnos) {
-		        jugador.enviarMensaje(Mensaje.LETRA_USADA, letra);
-		    }
+
+	public synchronized void notificarLetraUsada(String letra) {
+		for (ManejadorCliente jugador : jugadoresTurnos) {
+			jugador.enviarMensaje(Mensaje.LETRA_USADA, letra);
 		}
-		public synchronized void notificarLetraUsadaConcurrente(String letra) {
-		    for (ManejadorCliente jugador : jugadoresConcurrentes) {
-		        jugador.enviarMensaje(Mensaje.LETRA_USADA, letra);
-		    }
+	}
+
+	public synchronized void notificarLetraUsadaConcurrente(String letra) {
+		for (ManejadorCliente jugador : jugadoresConcurrentes) {
+			jugador.enviarMensaje(Mensaje.LETRA_USADA, letra);
 		}
+	}
 }
-	

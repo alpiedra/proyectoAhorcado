@@ -80,4 +80,44 @@
 		<resultado ganador="alicia" tipo="victoria">alicia ganó la partida
 		</resultado>
 	</partida>
+	<partida id="P1">
+		<fecha>2025-12-06 12:17:58</fecha>
+		<modo>concurrente</modo>
+		<jugadores>asf, wef</jugadores>
+		<palabra>CLARITUD</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P2">
+		<fecha>2025-12-06 12:18:05</fecha>
+		<modo>concurrente</modo>
+		<jugadores>wef</jugadores>
+		<palabra>LOBOS</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P3">
+		<fecha>2025-12-06 12:18:11</fecha>
+		<modo>concurrente</modo>
+		<jugadores>wef</jugadores>
+		<palabra>PANTRÓPICO</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P1">
+		<fecha>2025-12-06 12:23:40</fecha>
+		<modo>concurrente</modo>
+		<jugadores>f&lt;a</jugadores>
+		<palabra>HORA DE CENAR</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
+	<partida id="P2">
+		<fecha>2025-12-06 12:23:49</fecha>
+		<modo>concurrente</modo>
+		<jugadores>f&lt;a</jugadores>
+		<palabra>WEDLOCK</palabra>
+		<resultado tipo="derrota">Se acabaron los intentos, nadie ganó
+		</resultado>
+	</partida>
 </historialPartidas>

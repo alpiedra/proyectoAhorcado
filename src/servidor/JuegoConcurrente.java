@@ -16,17 +16,23 @@ public class JuegoConcurrente {
 	private String ganador;
 	private boolean partidaTerminada;
 
-	public JuegoConcurrente() throws IOException {
-		this.palabraSecreta = Juego.cargarPalabraAleatoria();
-		this.palabraActual = new char[palabraSecreta.length()];
+	public JuegoConcurrente() {
+		try {
+			this.palabraSecreta = Juego.cargarPalabraAleatoria();
+			this.palabraActual = new char[palabraSecreta.length()];
 
-		for (int i = 0; i < palabraActual.length; i++) {
-			palabraActual[i] = '_';
+			for (int i = 0; i < palabraActual.length; i++) {
+				palabraActual[i] = '_';
+			}
+			this.letrasUsadas = new HashSet<>();
+			this.intentosRestantes = max_intentos;
+			this.ganador = null;
+			this.partidaTerminada = false;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		this.letrasUsadas = new HashSet<>();
-		this.intentosRestantes = max_intentos;
-		this.ganador = null;
-		this.partidaTerminada = false;
+
 	}
 
 	//
